@@ -1,0 +1,15 @@
+{
+  "region": "ap-shanghai",
+  "bucket": "xuejinpricelist-1440012515",
+  "cdn_domain": "img.xuejinclub.com",
+  "eo_zone_name": "xuejinclub.com",
+  "eo_zone_id": "zone-3wkw6pux89rg",
+  "local_image_dir": "../images",
+  "local_site_dir": "../dist",
+  "source_image_prefix": "images",
+  "cos_prefix": "images",
+  "hash_filenames": true,
+  "convert_webp": true,
+  "thumbnail_width": 1200,
+  "map_file": "url-map.json"
+}

@@ -1,0 +1,35 @@
+{
+  "name": "xuejin-pricelist",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "start": "node server/index.mjs",
+    "admin:password": "node server/set-password.mjs",
+    "test:server": "node --test server/tests/*.test.mjs",
+    "build": "npm run prepare:assets && tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
+    "prepare:assets": "node scripts/prepare-assets.mjs",
+    "predev": "npm run prepare:assets",
+    "package": "npm run build && python3 scripts/package_release.py"
+  },
+  "dependencies": {
+    "express": "5.3.0",
+    "lucide-react": "1.61.0",
+    "multer": "2.5.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "sharp": "0.35.5"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "typescript": "7.0.2",
+    "vite": "8.3.5"
+  }
+}

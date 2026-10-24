@@ -1,0 +1,27 @@
+[Unit]
+Description=Snow Ashes Esports price list and content admin
+After=network.target
+
+[Service]
+Type=simple
+User=xuejin
+Group=xuejin
+WorkingDirectory=/opt/xuejinpricelist
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=3000
+Environment=DATA_DIR=/var/lib/xuejinpricelist
+Environment=TRUST_PROXY=1
+ExecStart=/usr/bin/node server/index.mjs
+Restart=on-failure
+RestartSec=5
+StateDirectory=xuejinpricelist
+StateDirectoryMode=0700
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/xuejinpricelist
+
+[Install]
+WantedBy=multi-user.target
