@@ -27,6 +27,8 @@ npm start
 
 生产服务默认监听 `127.0.0.1:3000`。部署到腾讯云服务器的完整说明见 [DEPLOY.md](DEPLOY.md)，包括 Nginx、HTTPS、systemd、备份和升级。
 
+仓库也提供 GitHub Pages 的前台预览工作流。使用时在 **Settings → Pages → Source** 选择 **GitHub Actions**，由工作流构建并发布 `dist/`，不要直接发布仓库根目录。Pages 不运行内容后台；完整后台仍需 Node.js 服务器。详见 [Pages 配置说明](DEPLOY.md#github-pages-前台预览)。
+
 `npm run package` 同时生成纯静态前台包和包含后台的服务器部署包；后台需要 Node 服务，不能只将 HTML 上传到 COS 后使用。
 
 ## 图片来源

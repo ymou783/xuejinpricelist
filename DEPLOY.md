@@ -1,6 +1,16 @@
 # 腾讯云服务器部署
 
-网站前台与内容后台由同一个 Node.js 服务提供。代码在 GitHub，部署由用户执行；本次未登录服务器或对外发布。
+网站前台与内容后台由同一个 Node.js 服务提供。完整网站按下方服务器步骤部署；仅预览静态前台时可使用 GitHub Pages。
+
+## GitHub Pages 前台预览
+
+仓库已提供 `.github/workflows/pages.yml`，会安装 Node.js 24、执行 `npm ci` 和 Vite 构建，然后只发布 `dist/`。不能直接用默认 Jekyll 工作流发布仓库根目录：根目录的 `index.html` 引用尚未编译的 `/src/main.tsx`，浏览器会因脚本路径或类型错误而显示空白页。Actions 显示成功仅表示文件发布成功，不代表 React 应用已经构建。
+
+在仓库 **Settings → Pages → Build and deployment → Source** 选择 **GitHub Actions**。之后进入 **Actions → Deploy price list to GitHub Pages → Run workflow**，或向 `main` 推送更新。工作流会从 Pages 设置读取实际基础路径，因此项目地址 `/xuejinpricelist/` 下的 JavaScript、样式、字体和内容 JSON 都使用正确路径。
+
+当前预览地址为 `https://ymou783.github.io/xuejinpricelist/`。Pages 只提供静态前台，显示 `public/catalog.json` 中的内容，不能运行 Node.js 后台、保存后台修改或处理上传。完整网站及 `/admin` 请按下文部署到腾讯云服务器；服务器后台修改的数据不会自动同步到 Pages 预览。
+
+若 Actions 显示成功但页面仍是旧内容，先确认运行的是本仓库的 **Deploy price list to GitHub Pages** 工作流，再刷新浏览器缓存；不要再次选择发布根目录的默认 Jekyll 流程。
 
 ## 先启动完整版本
 
