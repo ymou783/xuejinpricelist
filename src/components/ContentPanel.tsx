@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AlertCircle, ArrowLeft, ArrowRight, Check, Copy, ExternalLink, Gift, Image as ImageIcon, MessageCircle, X, ZoomIn } from "lucide-react";
 import { categories, type Catalog, type Poster, type SectionId } from "../catalog";
 import { imageUrl, responsiveSources } from "../cdn";
-interface Props { section: SectionId; data: Catalog | null; status: string; onRetry: () => void; onClose: () => void; onOpen: (poster: Poster) => void }
+interface Props { section: SectionId; initialPoster: string | null; data: Catalog | null; status: string; onRetry: () => void; onClose: () => void; onOpen: (poster: Poster) => void }
 const titles = { latest: "趣味单上新", contact: "联系客服", benefits: "预存福利" };
 function PosterPreview({ poster, domain, onOpen }: { poster: Poster; domain: string; onOpen: () => void }) {
   const [failed, setFailed] = useState(false); const [attempt, setAttempt] = useState(0);
@@ -16,9 +16,9 @@ function Empty({ section, onClose }: { section: SectionId; onClose: () => void }
   const description = section === "contact" ? "联系方式补充后会在这里展示。" : section === "benefits" ? "预存规则与福利内容将在确认后公布。" : "该分类的价目海报将在补充后展示。";
   return <div className="panel-empty"><span className="empty-icon"><Icon aria-hidden="true" /></span><h3>{heading}</h3><p>{description}</p><button className="button button-primary" onClick={onClose}>返回分类</button></div>;
 }
-export function ContentPanel({ section, data, status, onRetry, onClose, onOpen }: Props) {
+export function ContentPanel({ section, initialPoster, data, status, onRetry, onClose, onOpen }: Props) {
   const dialog = useRef<HTMLDialogElement>(null); const scroll = useRef<HTMLDivElement>(null);
-  const [active, setActive] = useState(""); const [copied, setCopied] = useState(""); const [copyError, setCopyError] = useState(false);
+  const [active, setActive] = useState(initialPoster ?? ""); const [copied, setCopied] = useState(""); const [copyError, setCopyError] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const posters = data?.entries.filter(p => section === "latest" ? p.isNew : p.category === section) ?? [];
   const current = posters.find(p => p.id === active) ?? posters[0];
@@ -30,6 +30,9 @@ export function ContentPanel({ section, data, status, onRetry, onClose, onOpen }
     return () => { element?.close(); document.body.style.overflow = overflow; };
   }, []);
   useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
+  useLayoutEffect(() => {
+    if (current) dialog.current?.querySelector<HTMLElement>(`[data-poster-id="${current.id}"]`)?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [current?.id]);
   const copy = async (value: string, id: string) => {
     try { await navigator.clipboard.writeText(value); setCopied(id); setCopyError(false);
       if (copyTimer.current) clearTimeout(copyTimer.current); copyTimer.current = setTimeout(() => setCopied(""), 2500);
@@ -37,7 +40,6 @@ export function ContentPanel({ section, data, status, onRetry, onClose, onOpen }
   };
   const selectPoster = (poster: Poster) => {
     setActive(poster.id); scroll.current?.scrollTo({ top: 0 });
-    requestAnimationFrame(() => dialog.current?.querySelector<HTMLElement>(`[data-poster-id="${poster.id}"]`)?.scrollIntoView({ block: "nearest", inline: "nearest" }));
   };
   return <dialog ref={dialog} className="content-panel" aria-labelledby="panel-title" onCancel={e => { e.preventDefault(); onClose(); }} onClick={e => { if (e.target === e.currentTarget) { const r = e.currentTarget.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) onClose(); } }}>
     <header className="panel-header"><button className="icon-button" aria-label="返回分类" onClick={onClose}><ArrowLeft aria-hidden="true" /></button><h2 id="panel-title">{title}</h2><button className="icon-button panel-close" aria-label="关闭内容窗口" onClick={onClose}><X aria-hidden="true" /></button></header>

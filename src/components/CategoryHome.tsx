@@ -1,13 +1,15 @@
+import type { ReactNode } from "react";
 import { ChevronRight, Compass, Dice5, Gem, Gift, Headphones, MessageCircle } from "lucide-react";
 import { categories, type Banner, type Benefit, type SectionId } from "../catalog";
 import { HomeCarousel } from "./HomeCarousel";
 import { OwnerRights } from "./OwnerRights";
 const icons = [Compass, Dice5, Gem, Headphones];
 function NewIcon() { return <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3c-1 5-3 7-8 9 5 1 7 3 8 8 1-5 3-7 8-8-5-2-7-4-8-9Z" /><path d="m24 19 1.3 4.7L30 25l-4.7 1.3L24 31l-1.3-4.7L18 25l4.7-1.3Z" fill="currentColor" stroke="none" /></svg>; }
-interface Props { heading: string; banners: Banner[]; ownerRights: Benefit[]; domain: string; onOpen: (section: SectionId) => void }
-export function CategoryHome({ heading, banners, ownerRights, domain, onOpen }: Props) {
+interface Props { heading: string; banners: Banner[]; ownerRights: Benefit[]; domain: string; search: ReactNode; onOpen: (section: SectionId) => void }
+export function CategoryHome({ heading, banners, ownerRights, domain, search, onOpen }: Props) {
   return <main className="shell home-main" id="categories">
     <HomeCarousel heading={heading} banners={banners} domain={domain} />
+    {search}
     <section className="category-section" aria-labelledby="category-heading">
       <h2 id="category-heading" className="section-title">价目分类</h2>
       <a href="#latest" className="latest-entry entry" onClick={e => { e.preventDefault(); onOpen("latest"); }}>
