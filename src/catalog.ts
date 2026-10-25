@@ -8,7 +8,7 @@ export interface ImageAsset { source: "cdn" | "upload"; objectKey: string; width
 export interface Poster { id: string; title: string; description: string; category: CategoryId; isNew: boolean; image: ImageAsset }
 export interface Banner { id: string; title: string; image: ImageAsset }
 export interface Contact { id: string; label: string; value: string; url?: string; image?: ImageAsset }
-export interface Benefit { id: string; title: string; body: string }
+export interface Benefit { id: string; title: string; body: string; image?: ImageAsset }
 export interface Catalog { brand: string; heading: string; cdnDomain: string; entries: Poster[]; contacts: Contact[]; benefits: Benefit[]; banners: Banner[]; ownerRights: Benefit[] }
 function object(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value); }
 function text(value: unknown, max = 200): value is string { return typeof value === "string" && value.trim().length > 0 && value.length <= max; }
@@ -49,12 +49,15 @@ export function parseCatalog(value: unknown): Catalog {
     && (item.url === undefined || (text(item.url, 1500) && /^https?:\/\//i.test(item.url) && (() => {
       try { const u = new URL(item.url); return !u.username && !u.password; } catch { return false; }
     })())) && (item.image === undefined || image(item.image)))) throw new Error("客服信息不完整，链接须为 http 或 https 地址。");
-  if (!unique(value.benefits, item => object(item) && text(item.title, 100) && text(item.body, 15000))) throw new Error("请填写福利标题和正文。");
+  if (!unique(value.benefits, item => object(item) && text(item.title, 100)
+    && (item.body === undefined || (typeof item.body === "string" && item.body.length <= 15000))
+    && (text(item.body, 15000) || item.image !== undefined)
+    && (item.image === undefined || image(item.image)))) throw new Error("请填写福利标题，并添加正文或图片。");
   return {
     brand: value.brand, heading: value.heading, cdnDomain: value.cdnDomain,
     entries: value.entries.map((raw: unknown) => { const e = raw as Poster; return { id: e.id, title: e.title, description: e.description ?? e.image.alt, category: e.category, isNew: e.isNew, image: cleanImage(e.image) }; }),
     contacts: value.contacts.map((raw: unknown) => { const c = raw as Contact; return { id: c.id, label: c.label, value: c.value, ...(c.url ? { url: c.url } : {}), ...(c.image ? { image: cleanImage(c.image) } : {}) }; }),
-    benefits: value.benefits.map((raw: unknown) => { const b = raw as Benefit; return { id: b.id, title: b.title, body: b.body }; }),
+    benefits: value.benefits.map((raw: unknown) => { const b = raw as Benefit; return { id: b.id, title: b.title, body: b.body ?? "", ...(b.image ? { image: cleanImage(b.image) } : {}) }; }),
     banners: banners.map((raw: unknown) => { const b = raw as Banner; return { id: b.id, title: b.title, image: cleanImage(b.image) }; }),
     ownerRights: ownerRights.map((raw: unknown) => { const b = raw as Benefit; return { id: b.id, title: b.title, body: b.body }; }),
   };

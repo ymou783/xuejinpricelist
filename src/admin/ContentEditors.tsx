@@ -1,5 +1,6 @@
 import { Plus, Trash2 } from "lucide-react";
-import type { Catalog, Contact } from "../catalog";
+import { useLayoutEffect, useRef } from "react";
+import type { Benefit, Catalog, Contact } from "../catalog";
 import { UploadField } from "./UploadField";
 import { contentId } from "./contentId";
 type Change = (change: (current: Catalog) => Catalog) => void;
@@ -22,12 +23,23 @@ export function ContactEditor({ catalog, csrf, onChange, onBusy, onError }: { ca
     </article>)}</div>
   </>;
 }
-export function BenefitsEditor({ catalog, onChange, section = "benefits" }: { catalog: Catalog; onChange: Change; section?: "benefits" | "ownerRights" }) {
+export function BenefitsEditor({ catalog, csrf, imageEnabled, onChange, onBusy, onError, section = "benefits" }: { catalog: Catalog; csrf: string; imageEnabled: boolean; onChange: Change; onBusy: (busy: boolean) => void; onError: (error: unknown) => void; section?: "benefits" | "ownerRights" }) {
   const isRights = section === "ownerRights";
   const label = isRights ? "权益" : "福利";
-  const update = (id: string, key: "title" | "body", text: string) => onChange(c => ({ ...c, [section]: c[section].map(b => b.id === id ? { ...b, [key]: text } : b) }));
-  return <><div className="admin-section-heading"><div><h1>{isRights ? "老板权益" : "预存福利"}</h1><p>{isRights ? "编辑首页底部的老板权益内容。" : "发布确认后的福利内容与适用规则。"}</p></div><button type="button" className="button button-primary" onClick={() => onChange(c => ({ ...c, [section]: [...c[section], { id: contentId("content"), title: "", body: "" }] }))}><Plus size={20} />新增内容</button></div>
+  const list = useRef<HTMLDivElement>(null); const pendingFocus = useRef("");
+  useLayoutEffect(() => {
+    if (pendingFocus.current) { list.current?.querySelector<HTMLInputElement>(`[data-content-id="${pendingFocus.current}"] input`)?.focus(); pendingFocus.current = ""; }
+  }, [catalog[section].length]);
+  const update = (id: string, patch: Partial<Benefit>) => onChange(c => ({ ...c, [section]: c[section].map(b => b.id === id ? { ...b, ...patch } : b) }));
+  const add = () => { const id = contentId("content"); pendingFocus.current = id; onChange(c => ({ ...c, [section]: [...c[section], { id, title: "", body: "" }] })); };
+  return <><div className="admin-section-heading"><div><h1>{isRights ? "老板权益" : "预存福利"}</h1><p>{isRights ? "编辑首页底部的老板权益内容。" : "填写福利标题，正文和图片至少添加一项。"}</p></div><button type="button" className="button button-primary" onClick={add}><Plus size={20} />{isRights ? "新增权益" : "新增福利"}</button></div>
     {!catalog[section].length ? <div className="admin-empty-message">{isRights ? "尚未填写老板权益，前台已保留展示位置。" : "尚未填写福利内容，前台会显示“福利内容待补充”。"}</div> : null}
-    <div className="editor-item-list">{catalog[section].map((b, index) => <article className="editable-item" key={b.id}><div className="form-subheading"><h2>{label} {index + 1}</h2><button type="button" className="text-danger" onClick={() => { if (confirm("删除这条" + label + "内容？保存后生效。")) onChange(c => ({ ...c, [section]: c[section].filter(v => v.id !== b.id) })); }}><Trash2 size={16} />删除</button></div><label className="form-field"><span>{label}标题</span><input required maxLength={100} value={b.title} onChange={e => update(b.id, "title", e.target.value)} /></label><label className="form-field"><span>{label}正文</span><textarea required maxLength={15000} rows={10} value={b.body} placeholder={"填写" + label + "详情、适用范围与规则，支持换行。"} onChange={e => update(b.id, "body", e.target.value)} /></label></article>)}</div>
+    <div className="editor-item-list" ref={list}>{catalog[section].map((b, index) => <article className="editable-item" data-content-id={b.id} key={b.id}><div className="form-subheading"><h2>{label} {index + 1}</h2><button type="button" className="text-danger" onClick={() => { if (confirm("删除这条" + label + "内容？保存后生效。")) onChange(c => ({ ...c, [section]: c[section].filter(v => v.id !== b.id) })); }}><Trash2 size={16} />删除</button></div>
+      <label className="form-field"><span>{label}标题</span><input required maxLength={100} value={b.title} onChange={e => update(b.id, { title: e.target.value })} /></label>
+      <label className="form-field"><span>{label}正文</span><textarea required={isRights || !b.image} maxLength={15000} rows={6} value={b.body} placeholder={isRights ? "填写权益详情，支持换行。" : "填写福利详情；已上传图片时可留空，支持换行。"} onChange={e => update(b.id, { body: e.target.value })} /></label>
+      {!isRights ? <><div className="form-field"><span>福利图片</span><UploadField csrf={csrf} image={b.image} domain={catalog.cdnDomain} label={"上传福利图片 " + (index + 1)} disabled={!imageEnabled} onBusy={onBusy} onError={onError} onUploaded={asset => update(b.id, { image: { ...asset, alt: b.title || "预存福利海报" } })} /></div>
+        <p className="field-help">{imageEnabled ? "支持文字、图片或图文组合。上传后点击「保存发布」，前台可点击图片放大。" : "当前后台服务尚未启用福利图片。请更新并重启 Node 服务，再刷新后台；文字内容可继续编辑。"}</p>
+        {b.image ? <button type="button" className="text-danger" onClick={() => update(b.id, { image: undefined })}>移除福利图片</button> : null}</> : null}
+    </article>)}</div>
   </>;
 }

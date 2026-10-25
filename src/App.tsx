@@ -10,11 +10,13 @@ const AdminApp = lazy(() => import("./admin/AdminApp"));
 function PublicApp() {
   const catalog = useCatalog(); const route = usePageRoute(); const data = catalog.data;
   const poster = data?.entries.find(p => p.id === route.poster && (route.section === "latest" ? p.isNew : p.category === route.section));
+  const benefit = route.section === "benefits" ? data?.benefits.find(item => item.id === route.poster) : undefined;
+  const viewerImage = poster ?? (benefit?.image ? { title: benefit.title, image: benefit.image } : null);
   return <><a className="skip-link" href="#categories">跳到分类入口</a><Header brand={data?.brand ?? "雪烬电竞"} />
     <CategoryHome heading={data?.heading ?? "三角洲价目表"} banners={data?.banners ?? []} ownerRights={data?.ownerRights ?? []} domain={data?.cdnDomain ?? "img.xuejinclub.com"} search={<PosterSearch data={data} status={catalog.status} onRetry={catalog.retry} onSelect={poster => route.select(poster.category, poster.id)} />} onOpen={route.navigate} />
     <footer className="shell site-footer"><span>{data?.brand ?? "雪烬电竞"} · 价目表</span><p>选择分类后可查看海报，点击海报放大。</p></footer>
-    {route.section ? <ContentPanel key={route.section} section={route.section} initialPoster={route.selected} data={data} status={catalog.status} onRetry={catalog.retry} onClose={route.back} onOpen={p => route.navigate(route.section!, p.id)} /> : null}
-    {poster && data ? <Suspense fallback={<div className="viewer-loading" role="status">正在打开海报…</div>}><ImageViewer key={poster.id} poster={poster} domain={data.cdnDomain} onClose={route.back} /></Suspense> : null}
+    {route.section ? <ContentPanel key={route.section} section={route.section} initialPoster={route.selected} data={data} status={catalog.status} onRetry={catalog.retry} onClose={route.back} onOpen={id => route.navigate(route.section!, id)} /> : null}
+    {viewerImage && data ? <Suspense fallback={<div className="viewer-loading" role="status">正在打开海报…</div>}><ImageViewer key={route.poster} poster={viewerImage} domain={data.cdnDomain} onClose={route.back} /></Suspense> : null}
   </>;
 }
 export default function App() {

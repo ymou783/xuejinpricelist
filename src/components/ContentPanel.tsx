@@ -1,13 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AlertCircle, ArrowLeft, ArrowRight, Check, Copy, ExternalLink, Gift, Image as ImageIcon, MessageCircle, X, ZoomIn } from "lucide-react";
-import { categories, type Catalog, type Poster, type SectionId } from "../catalog";
+import { categories, type Catalog, type ImageAsset, type Poster, type SectionId } from "../catalog";
 import { imageUrl, responsiveSources } from "../cdn";
-interface Props { section: SectionId; initialPoster: string | null; data: Catalog | null; status: string; onRetry: () => void; onClose: () => void; onOpen: (poster: Poster) => void }
+interface Props { section: SectionId; initialPoster: string | null; data: Catalog | null; status: string; onRetry: () => void; onClose: () => void; onOpen: (id: string) => void }
 const titles = { latest: "趣味单上新", contact: "联系客服", benefits: "预存福利" };
-function PosterPreview({ poster, domain, onOpen }: { poster: Poster; domain: string; onOpen: () => void }) {
+function PosterPreview({ poster, domain, onOpen }: { poster: { title: string; image: ImageAsset }; domain: string; onOpen: () => void }) {
   const [failed, setFailed] = useState(false); const [attempt, setAttempt] = useState(0);
   return <div className="panel-poster">{failed ? <div className="image-error" role="alert"><AlertCircle aria-hidden="true" /><p>海报暂时无法加载</p><button className="button button-primary" onClick={() => { setFailed(false); setAttempt(v => v + 1); }}>重新加载图片</button></div>
-    : <button className="poster-preview" aria-label={"放大查看" + poster.title} onClick={onOpen}><img src={imageUrl(domain, poster, 900, attempt)} srcSet={responsiveSources(domain, poster, undefined, attempt)} sizes="(max-width: 700px) calc(100vw - 64px), 760px" width={poster.image.width} height={poster.image.height} alt={poster.image.alt} decoding="async" onError={() => setFailed(true)} /><span className="poster-zoom"><ZoomIn size={18} aria-hidden="true" />点击放大</span></button>}
+    : <button className="poster-preview" aria-label={"放大查看" + poster.title} onClick={onOpen}><img src={imageUrl(domain, poster, 900, attempt)} srcSet={responsiveSources(domain, poster, undefined, attempt)} sizes="(max-width: 700px) calc(100vw - 64px), 760px" width={poster.image.width} height={poster.image.height} alt={poster.image.alt} loading="lazy" decoding="async" onError={() => setFailed(true)} /><span className="poster-zoom"><ZoomIn size={18} aria-hidden="true" />点击放大</span></button>}
   </div>;
 }
 function Empty({ section, onClose }: { section: SectionId; onClose: () => void }) {
@@ -47,7 +47,7 @@ export function ContentPanel({ section, initialPoster, data, status, onRetry, on
       {status === "loading" ? <div className="panel-empty" role="status"><p>正在加载内容…</p></div> : null}
       {status === "error" ? <div className="panel-empty" role="alert"><AlertCircle size={40} aria-hidden="true" /><h3>内容暂时无法加载</h3><button className="button button-primary" onClick={onRetry}>重新加载</button></div> : null}
       {data && section === "contact" ? data.contacts.length ? <div className="contact-list">{data.contacts.map(c => <article key={c.id} className="contact-item"><h3>{c.label}</h3><p className="contact-value">{c.value}</p>{c.image ? <img className="contact-qr" src={imageUrl(data.cdnDomain, c.image, 600)} width={c.image.width} height={c.image.height} alt={c.image.alt} /> : null}<div className="contact-actions"><button className="button button-secondary" onClick={() => void copy(c.value, c.id)}>{copied === c.id ? <Check size={18} /> : <Copy size={18} />}{copied === c.id ? "已复制" : "复制联系方式"}</button>{c.url ? <a className="button button-primary" href={c.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={18} />联系客服</a> : null}</div></article>)}<p className="copy-status" role="status">{copyError ? "复制暂时不可用，请长按或选中号码手动复制。" : copied ? "联系方式已复制" : ""}</p></div> : <Empty section={section} onClose={onClose} /> : null}
-      {data && section === "benefits" ? data.benefits.length ? <div className="benefit-list">{data.benefits.map(b => <article key={b.id}><h3>{b.title}</h3><p>{b.body}</p></article>)}</div> : <Empty section={section} onClose={onClose} /> : null}
+      {data && section === "benefits" ? data.benefits.length ? <div className="benefit-list">{data.benefits.map(b => <article key={b.id}><h3>{b.title}</h3>{b.body.trim() ? <p>{b.body}</p> : null}{b.image ? <PosterPreview poster={{ title: b.title, image: b.image }} domain={data.cdnDomain} onOpen={() => onOpen(b.id)} /> : null}</article>)}</div> : <Empty section={section} onClose={onClose} /> : null}
       {data && section !== "contact" && section !== "benefits" ? current ? <>
         {posters.length > 1 ? <div className="poster-switcher">
           <div className="poster-switcher-summary"><span role="status">第 {currentIndex + 1} 张，共 {posters.length} 张</span><div>
@@ -57,7 +57,7 @@ export function ContentPanel({ section, initialPoster, data, status, onRetry, on
           <div className="poster-tabs" role="group" aria-label="选择海报">{posters.map(p => <button key={p.id} data-poster-id={p.id} aria-pressed={p.id === current.id} onClick={() => selectPoster(p)}>{p.title}</button>)}</div>
         </div> : null}
         <div className="poster-info"><h3>{current.title}</h3><p>{current.description}</p></div>
-        <PosterPreview key={current.id} poster={current} domain={data.cdnDomain} onOpen={() => onOpen(current)} />
+        <PosterPreview key={current.id} poster={current} domain={data.cdnDomain} onOpen={() => onOpen(current.id)} />
       </> : <Empty section={section} onClose={onClose} /> : null}
     </div>
     {section !== "contact" && section !== "benefits" ? <footer className="panel-footer">点击海报可放大查看。</footer> : null}

@@ -33,7 +33,7 @@ test("login rejects cross-origin and wrong passwords, sets a protected cookie", 
   const r = await call("/api/admin/login", "POST", { password }, { "x-forwarded-proto": "https" });
   assert.equal(r.status, 200); const raw = r.headers.get("set-cookie"); assert.match(raw, /HttpOnly/); assert.match(raw, /SameSite=Strict/); assert.match(raw, /Secure/);
   cookie = raw.split(";")[0]; csrf = (await r.json()).csrf; assert.ok(csrf);
-  const session = await (await call("/api/admin/session")).json(); assert.equal(session.authenticated, true); assert.equal(session.csrf, csrf);
+  const session = await (await call("/api/admin/session")).json(); assert.equal(session.authenticated, true); assert.equal(session.csrf, csrf); assert.equal(session.benefitImages, true);
 });
 test("publishing requires CSRF and rejects malformed content", async () => {
   const snapshot = await (await call("/api/admin/content")).json();
@@ -118,6 +118,49 @@ test("invalid banner paths, excessive slides, and incomplete rights cannot repla
   cases[2].catalog.ownerRights[0].body = "";
   for (const input of cases) assert.equal((await call("/api/admin/content", "PUT", input, { "x-csrf-token": csrf })).status, 400);
   assert.equal((await (await call("/catalog.json")).json()).banners[0].title, "测试横幅");
+});
+test("benefits publish text, image-only and combined content without losing uploaded images", async () => {
+  const saved = await (await call("/api/admin/content")).json();
+  const image = saved.catalog.entries[0].image;
+  saved.catalog.benefits = [
+    { id: "text-benefit", title: "文字福利", body: "原有文字内容" },
+    { id: "image-benefit", title: "福利海报", image },
+    { id: "mixed-benefit", title: "图文福利", body: "第一行\n第二行", image: { ...image, extra: "strip-this" } },
+  ];
+  assert.equal((await call("/api/admin/content", "PUT", saved, { "x-csrf-token": csrf })).status, 200);
+  const published = await (await call("/catalog.json")).json();
+  assert.deepEqual(published.benefits[0], saved.catalog.benefits[0]);
+  assert.equal(published.benefits[1].body, "");
+  assert.deepEqual(published.benefits[1].image, image);
+  assert.deepEqual(published.benefits[2].image, image);
+  const stored = await createStore(directory).snapshot();
+  assert.deepEqual(stored.catalog.benefits, published.benefits);
+  assert.deepEqual(stored.catalog.contacts, saved.catalog.contacts);
+  assert.deepEqual(stored.catalog.ownerRights, saved.catalog.ownerRights);
+});
+test("benefits reject blank content and unsafe images while keeping published data", async () => {
+  const saved = await (await call("/api/admin/content")).json();
+  const base = saved.catalog.benefits[1];
+  const invalid = [
+    { ...base, title: "" }, { ...base, image: undefined, body: "  " },
+    { ...base, body: 42 }, { ...base, body: "x".repeat(15001) },
+    { ...base, image: { ...base.image, objectKey: "../admin.json" } },
+    { ...base, image: { ...base.image, width: 0 } },
+  ];
+  for (const benefit of invalid) {
+    const input = structuredClone(saved); input.catalog.benefits = [benefit];
+    assert.equal((await call("/api/admin/content", "PUT", input, { "x-csrf-token": csrf })).status, 400);
+  }
+  assert.deepEqual((await (await call("/catalog.json")).json()).benefits, saved.catalog.benefits);
+});
+test("removing a benefit image preserves its text and legacy text benefits stay valid", async () => {
+  const saved = await (await call("/api/admin/content")).json();
+  delete saved.catalog.benefits[2].image;
+  assert.equal((await call("/api/admin/content", "PUT", saved, { "x-csrf-token": csrf })).status, 200);
+  const published = await (await call("/catalog.json")).json();
+  assert.equal(published.benefits[2].image, undefined);
+  assert.equal(published.benefits[2].body, "第一行\n第二行");
+  assert.deepEqual(published.benefits[0], { id: "text-benefit", title: "文字福利", body: "原有文字内容" });
 });
 test("upload rejects disguised script images and files above the size limit", async () => {
   for (const [bytes, filename] of [[Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'), "fake.png"], [Buffer.alloc(16 * 1024 * 1024), "large.jpg"]]) {

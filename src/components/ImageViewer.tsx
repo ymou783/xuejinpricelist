@@ -1,10 +1,10 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { AlertCircle, ExternalLink, Minus, Plus, RotateCcw, X } from "lucide-react";
-import type { Poster } from "../catalog";
+import type { ImageAsset } from "../catalog";
 import { imageUrl, originalUrl, responsiveSources } from "../cdn";
 
 interface ImageViewerProps {
-  poster: Poster;
+  poster: { title: string; image: ImageAsset };
   domain: string;
   onClose: () => void;
 }

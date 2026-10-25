@@ -147,6 +147,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .benefit-list article { border-bottom:1px solid var(--line); padding-bottom:22px; margin-bottom:24px; }
 .benefit-list article:last-child { border:0; }
 .benefit-list p { font-size:16px; line-height:1.9; color:#53698e; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+.benefit-list .panel-poster { padding:18px 0 0; }
 .viewer-loading { position:fixed; inset:0; z-index:100; background:#ffffffed; display:grid; place-items:center; color:var(--accent); }
 .image-viewer { padding:0; border:1px solid var(--line); border-radius:12px; width:min(1320px,calc(100vw - 48px)); height:calc(100dvh - 48px); max-width:none; max-height:none; color:#15264b; background:#fff; box-shadow:0 20px 90px #13244f3d; overflow:hidden; }
 .image-viewer[open] { display:flex; flex-direction:column; }

@@ -2,6 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { contentId } from "../../src/admin/contentId.ts";
 import { ApiError, request } from "../../src/admin/api.ts";
+import { readFile } from "node:fs/promises";
+import { parseCatalog } from "../../src/catalog.ts";
+import { mergeSection, sectionDirty } from "../../src/admin/sections.ts";
 
 test("all admin content types can receive unique IDs without secure-context randomUUID", () => {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, "crypto");
@@ -36,4 +39,36 @@ test("admin requests show readable errors for HTML fallback and malformed JSON",
 test("admin request errors preserve the server response and HTTP status", async t => {
   t.mock.method(globalThis, "fetch", async () => Response.json({ error: "内容已在其他窗口修改，请重新加载后编辑。" }, { status: 409 }));
   await assert.rejects(request("content"), error => error instanceof ApiError && error.status === 409 && /其他窗口/.test(error.message));
+});
+
+test("unfinished benefit drafts cannot block saving a valid contact", async () => {
+  const saved = parseCatalog(JSON.parse(await readFile(new URL("../../public/catalog.json", import.meta.url), "utf8")));
+  const draft = structuredClone(saved);
+  draft.benefits = [{ id: "unfinished-benefit", title: "", body: "" }];
+  draft.contacts = [{ id: "new-contact", label: "测试客服", value: "扫码联系客服" }];
+  assert.throws(() => parseCatalog(draft), /福利/);
+  const published = parseCatalog(mergeSection(saved, draft, "contact"));
+  assert.deepEqual(published.contacts, draft.contacts);
+  assert.deepEqual(published.benefits, saved.benefits);
+  const afterSave = mergeSection(draft, published, "contact");
+  assert.deepEqual(afterSave.benefits, draft.benefits);
+  assert.equal(sectionDirty("contact", afterSave, published), false);
+  assert.equal(sectionDirty("benefits", afterSave, published), true);
+});
+
+test("cancel only resets the active section and home saves all three home fields", async () => {
+  const saved = parseCatalog(JSON.parse(await readFile(new URL("../../public/catalog.json", import.meta.url), "utf8")));
+  const draft = structuredClone(saved);
+  draft.heading = "未发布标题";
+  draft.contacts = [{ id: "contact-draft", label: "未发布客服", value: "草稿号码" }];
+  draft.entries = [];
+  const cancelled = mergeSection(draft, saved, "contact");
+  assert.deepEqual(cancelled.contacts, saved.contacts);
+  assert.equal(cancelled.heading, draft.heading);
+  assert.deepEqual(cancelled.entries, []);
+  draft.brand = "测试品牌"; draft.cdnDomain = "images.example.com";
+  const home = mergeSection(saved, draft, "home");
+  assert.deepEqual([home.brand, home.heading, home.cdnDomain], [draft.brand, draft.heading, draft.cdnDomain]);
+  assert.deepEqual(home.entries, saved.entries);
+  assert.deepEqual(home.contacts, saved.contacts);
 });
