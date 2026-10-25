@@ -1,6 +1,7 @@
 import { Plus, Trash2 } from "lucide-react";
 import type { Catalog, Contact } from "../catalog";
 import { UploadField } from "./UploadField";
+import { contentId } from "./contentId";
 type Change = (change: (current: Catalog) => Catalog) => void;
 export function HomeEditor({ catalog, onChange }: { catalog: Catalog; onChange: Change }) {
   return <><div className="admin-section-heading"><div><h1>首页设置</h1><p>修改首页文案和图片域名。</p></div></div><div className="simple-editor">
@@ -10,7 +11,7 @@ export function HomeEditor({ catalog, onChange }: { catalog: Catalog; onChange: 
 }
 export function ContactEditor({ catalog, csrf, onChange, onBusy, onError }: { catalog: Catalog; csrf: string; onChange: Change; onBusy: (busy: boolean) => void; onError: (error: unknown) => void }) {
   const update = (id: string, patch: Partial<Contact>) => onChange(c => ({ ...c, contacts: c.contacts.map(item => item.id === id ? { ...item, ...patch } : item) }));
-  return <><div className="admin-section-heading"><div><h1>联系客服</h1><p>设置公开联系方式、链接和二维码。</p></div><button type="button" className="button button-primary" onClick={() => onChange(c => ({ ...c, contacts: [...c.contacts, { id: "contact-" + crypto.randomUUID(), label: "", value: "" }] }))}><Plus size={20} />新增客服</button></div>
+  return <><div className="admin-section-heading"><div><h1>联系客服</h1><p>设置公开联系方式、链接和二维码。</p></div><button type="button" className="button button-primary" onClick={() => onChange(c => ({ ...c, contacts: [...c.contacts, { id: contentId("contact"), label: "", value: "" }] }))}><Plus size={20} />新增客服</button></div>
     {!catalog.contacts.length ? <div className="admin-empty-message">尚未填写客服信息，前台会显示“客服信息待补充”。</div> : null}
     <div className="editor-item-list">{catalog.contacts.map((c, index) => <article className="editable-item" key={c.id}><div className="form-subheading"><h2>客服 {index + 1}</h2><button type="button" className="text-danger" onClick={() => { if (confirm("删除这条客服信息？保存后生效。")) onChange(v => ({ ...v, contacts: v.contacts.filter(i => i.id !== c.id) })); }}><Trash2 size={16} />删除</button></div>
       <label className="form-field"><span>显示名称</span><input required maxLength={50} value={c.label} placeholder="例如：微信客服" onChange={e => update(c.id, { label: e.target.value })} /></label>
@@ -25,7 +26,7 @@ export function BenefitsEditor({ catalog, onChange, section = "benefits" }: { ca
   const isRights = section === "ownerRights";
   const label = isRights ? "权益" : "福利";
   const update = (id: string, key: "title" | "body", text: string) => onChange(c => ({ ...c, [section]: c[section].map(b => b.id === id ? { ...b, [key]: text } : b) }));
-  return <><div className="admin-section-heading"><div><h1>{isRights ? "老板权益" : "预存福利"}</h1><p>{isRights ? "编辑首页底部的老板权益内容。" : "发布确认后的福利内容与适用规则。"}</p></div><button type="button" className="button button-primary" onClick={() => onChange(c => ({ ...c, [section]: [...c[section], { id: "content-" + crypto.randomUUID(), title: "", body: "" }] }))}><Plus size={20} />新增内容</button></div>
+  return <><div className="admin-section-heading"><div><h1>{isRights ? "老板权益" : "预存福利"}</h1><p>{isRights ? "编辑首页底部的老板权益内容。" : "发布确认后的福利内容与适用规则。"}</p></div><button type="button" className="button button-primary" onClick={() => onChange(c => ({ ...c, [section]: [...c[section], { id: contentId("content"), title: "", body: "" }] }))}><Plus size={20} />新增内容</button></div>
     {!catalog[section].length ? <div className="admin-empty-message">{isRights ? "尚未填写老板权益，前台已保留展示位置。" : "尚未填写福利内容，前台会显示“福利内容待补充”。"}</div> : null}
     <div className="editor-item-list">{catalog[section].map((b, index) => <article className="editable-item" key={b.id}><div className="form-subheading"><h2>{label} {index + 1}</h2><button type="button" className="text-danger" onClick={() => { if (confirm("删除这条" + label + "内容？保存后生效。")) onChange(c => ({ ...c, [section]: c[section].filter(v => v.id !== b.id) })); }}><Trash2 size={16} />删除</button></div><label className="form-field"><span>{label}标题</span><input required maxLength={100} value={b.title} onChange={e => update(b.id, "title", e.target.value)} /></label><label className="form-field"><span>{label}正文</span><textarea required maxLength={15000} rows={10} value={b.body} placeholder={"填写" + label + "详情、适用范围与规则，支持换行。"} onChange={e => update(b.id, "body", e.target.value)} /></label></article>)}</div>
   </>;

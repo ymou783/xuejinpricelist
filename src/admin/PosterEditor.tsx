@@ -2,8 +2,9 @@ import { ArrowDown, ArrowUp, Image as ImageIcon, Plus, Trash2 } from "lucide-rea
 import type { ReactNode } from "react";
 import { categories, type Catalog, type ImageAsset, type Poster } from "../catalog";
 import { UploadField } from "./UploadField";
+import { contentId } from "./contentId";
 export function newPoster(): Poster {
-  return { id: "poster-" + crypto.randomUUID(), title: "", description: "", category: "basic", isNew: false, image: { source: "cdn", objectKey: "", width: 0, height: 0, alt: "价目海报" } };
+  return { id: contentId("poster"), title: "", description: "", category: "basic", isNew: false, image: { source: "cdn", objectKey: "", width: 0, height: 0, alt: "价目海报" } };
 }
 interface Props { catalog: Catalog; csrf: string; selected: string; footer: ReactNode; onSelect: (id: string) => void; onAdd: () => void; onChange: (id: string, patch: Partial<Poster>) => void; onRemove: (id: string) => void; onMove: (id: string, step: number) => void; onBusy: (busy: boolean) => void; onError: (error: unknown) => void }
 export function PosterEditor({ catalog, csrf, selected, footer, onSelect, onAdd, onChange, onRemove, onMove, onBusy, onError }: Props) {

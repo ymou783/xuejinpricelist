@@ -85,6 +85,12 @@ sudo systemctl restart xuejin-pricelist
 
 代码更新不会覆盖独立 `DATA_DIR` 中的内容。更新后再次检查首页、后台登录和图片。重置密码时运行 `npm run admin:password`（使用正确 `DATA_DIR`），再重启服务。
 
+## 后台按钮没有反馈
+
+若使用 `http://服务器IP:端口/admin`，旧版浏览器代码调用 `crypto.randomUUID()` 会报错，使新增海报、轮播图、客服、福利和权益失效。当前版本改用 HTTP 和 HTTPS 均可用的 `crypto.getRandomValues()` 生成公开内容 ID。按上面的更新步骤重新构建并重启 Node 服务，再强制刷新后台；仅更新 GitHub Pages 不会更新服务器后台。原有内容 ID 和持久数据均保留。
+
+若看到「后台接口未返回有效数据」，检查同一站点的 `/api/health` 是否返回 `{"ok":true}`、`/api/admin/session` 是否返回 JSON；反向代理需将 `/api/` 也交给 Node，不能回退为静态 HTML。真实管理操作应显示保存成功或可读错误提示。
+
 ## 图片与缓存
 
 - 后台直接上传：文件在服务器 `DATA_DIR/uploads/`，自动生成响应式 WebP；不自动写 COS。若今后迁移服务器，必须同时迁移上传目录。

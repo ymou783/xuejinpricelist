@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import type { Banner, Catalog, ImageAsset } from "../catalog";
 import { UploadField } from "./UploadField";
+import { contentId } from "./contentId";
 
 interface Props {
   catalog: Catalog;
@@ -13,7 +14,7 @@ export function BannersEditor({ catalog, csrf, onChange, onBusy, onError }: Prop
   const update = (id: string, patch: Partial<Banner>) => onChange(c => ({ ...c, banners: c.banners.map(b => b.id === id ? { ...b, ...patch } : b) }));
   const updateImage = (id: string, patch: Partial<ImageAsset>) => onChange(c => ({ ...c, banners: c.banners.map(b => b.id === id ? { ...b, image: { ...b.image, ...patch } } : b) }));
   const add = () => onChange(c => ({ ...c, banners: [...c.banners, {
-    id: "banner-" + crypto.randomUUID(), title: "", image: { source: "cdn", objectKey: "", width: 0, height: 0, alt: "" },
+    id: contentId("banner"), title: "", image: { source: "cdn", objectKey: "", width: 0, height: 0, alt: "" },
   }] }));
   const move = (position: number, step: number) => onChange(c => {
     const banners = [...c.banners]; const target = position + step;
