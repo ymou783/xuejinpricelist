@@ -4,7 +4,7 @@ import { UploadField } from "./UploadField";
 type Change = (change: (current: Catalog) => Catalog) => void;
 export function HomeEditor({ catalog, onChange }: { catalog: Catalog; onChange: Change }) {
   return <><div className="admin-section-heading"><div><h1>首页设置</h1><p>修改首页文案和图片域名。</p></div></div><div className="simple-editor">
-    {([{ key: "brand", label: "品牌名称", max: 30 }, { key: "heading", label: "首页标题", max: 40 }, { key: "subtitle", label: "首页说明", max: 100 }, { key: "cdnDomain", label: "图片 CDN 域名", max: 253 }] as const).map(f => <label className="form-field" key={f.key}><span>{f.label}</span><input required maxLength={f.max} value={catalog[f.key]} onChange={e => onChange(c => ({ ...c, [f.key]: e.target.value }))} /></label>)}
+    {([{ key: "brand", label: "品牌名称", max: 30 }, { key: "heading", label: "首页标题", max: 40 }, { key: "cdnDomain", label: "图片 CDN 域名", max: 253 }] as const).map(f => <label className="form-field" key={f.key}><span>{f.label}</span><input required maxLength={f.max} value={catalog[f.key]} onChange={e => onChange(c => ({ ...c, [f.key]: e.target.value }))} /></label>)}
     <p className="field-help">修改域名只影响使用 COS 对象路径的图片。服务器上传图片仍由本站提供。</p>
   </div></>;
 }
@@ -21,10 +21,12 @@ export function ContactEditor({ catalog, csrf, onChange, onBusy, onError }: { ca
     </article>)}</div>
   </>;
 }
-export function BenefitsEditor({ catalog, onChange }: { catalog: Catalog; onChange: Change }) {
-  const update = (id: string, key: "title" | "body", text: string) => onChange(c => ({ ...c, benefits: c.benefits.map(b => b.id === id ? { ...b, [key]: text } : b) }));
-  return <><div className="admin-section-heading"><div><h1>预存福利</h1><p>发布确认后的福利内容与适用规则。</p></div><button type="button" className="button button-primary" onClick={() => onChange(c => ({ ...c, benefits: [...c.benefits, { id: "benefit-" + crypto.randomUUID(), title: "", body: "" }] }))}><Plus size={20} />新增内容</button></div>
-    {!catalog.benefits.length ? <div className="admin-empty-message">尚未填写福利内容，前台会显示“福利内容待补充”。</div> : null}
-    <div className="editor-item-list">{catalog.benefits.map((b, index) => <article className="editable-item" key={b.id}><div className="form-subheading"><h2>福利 {index + 1}</h2><button type="button" className="text-danger" onClick={() => { if (confirm("删除这条福利内容？保存后生效。")) onChange(c => ({ ...c, benefits: c.benefits.filter(v => v.id !== b.id) })); }}><Trash2 size={16} />删除</button></div><label className="form-field"><span>福利标题</span><input required maxLength={100} value={b.title} onChange={e => update(b.id, "title", e.target.value)} /></label><label className="form-field"><span>福利正文</span><textarea required maxLength={15000} rows={10} value={b.body} placeholder="填写福利详情、适用范围与规则，支持换行。" onChange={e => update(b.id, "body", e.target.value)} /></label></article>)}</div>
+export function BenefitsEditor({ catalog, onChange, section = "benefits" }: { catalog: Catalog; onChange: Change; section?: "benefits" | "ownerRights" }) {
+  const isRights = section === "ownerRights";
+  const label = isRights ? "权益" : "福利";
+  const update = (id: string, key: "title" | "body", text: string) => onChange(c => ({ ...c, [section]: c[section].map(b => b.id === id ? { ...b, [key]: text } : b) }));
+  return <><div className="admin-section-heading"><div><h1>{isRights ? "老板权益" : "预存福利"}</h1><p>{isRights ? "编辑首页底部的老板权益内容。" : "发布确认后的福利内容与适用规则。"}</p></div><button type="button" className="button button-primary" onClick={() => onChange(c => ({ ...c, [section]: [...c[section], { id: "content-" + crypto.randomUUID(), title: "", body: "" }] }))}><Plus size={20} />新增内容</button></div>
+    {!catalog[section].length ? <div className="admin-empty-message">{isRights ? "尚未填写老板权益，前台已保留展示位置。" : "尚未填写福利内容，前台会显示“福利内容待补充”。"}</div> : null}
+    <div className="editor-item-list">{catalog[section].map((b, index) => <article className="editable-item" key={b.id}><div className="form-subheading"><h2>{label} {index + 1}</h2><button type="button" className="text-danger" onClick={() => { if (confirm("删除这条" + label + "内容？保存后生效。")) onChange(c => ({ ...c, [section]: c[section].filter(v => v.id !== b.id) })); }}><Trash2 size={16} />删除</button></div><label className="form-field"><span>{label}标题</span><input required maxLength={100} value={b.title} onChange={e => update(b.id, "title", e.target.value)} /></label><label className="form-field"><span>{label}正文</span><textarea required maxLength={15000} rows={10} value={b.body} placeholder={"填写" + label + "详情、适用范围与规则，支持换行。"} onChange={e => update(b.id, "body", e.target.value)} /></label></article>)}</div>
   </>;
 }

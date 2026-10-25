@@ -58,7 +58,7 @@ export default function ImageViewer({ poster, domain, onClose }: ImageViewerProp
     <dialog ref={dialog} className="image-viewer" aria-labelledby="viewer-title"
       onCancel={(event) => { event.preventDefault(); onClose(); }}>
       <header className="viewer-header">
-        <div><h2 id="viewer-title">{poster.title}价目表</h2><p>放大后可拖动或滚动查看价格细节</p></div>
+        <div><h2 id="viewer-title">{poster.title}</h2><p>放大后可拖动或滚动查看价格细节</p></div>
         <button type="button" className="icon-button viewer-close" aria-label="关闭大图" onClick={onClose}><X aria-hidden="true" size={24} /></button>
       </header>
       <div className="viewer-scroll" ref={scroll} tabIndex={0} aria-label="价目表图片，可滚动查看"

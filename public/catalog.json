@@ -1,9 +1,24 @@
 {
   "brand": "雪烬电竞",
   "heading": "三角洲价目表",
-  "subtitle": "选择分类，查看你想玩的内容。",
   "cdnDomain": "img.xuejinclub.com",
-  "entries": [],
+  "entries": [
+    {
+      "id": "basic-price-list",
+      "title": "基础体验单价目表",
+      "category": "basic",
+      "isNew": false,
+      "image": {
+        "source": "cdn",
+        "objectKey": "images/2a9bfad6-6e9a-4911-abf2-ff72ff8497dc.jpg",
+        "width": 2500,
+        "height": 4231,
+        "alt": "雪烬电竞基础体验单价目海报"
+      }
+    }
+  ],
   "contacts": [],
-  "benefits": []
+  "benefits": [],
+  "banners": [],
+  "ownerRights": []
 }

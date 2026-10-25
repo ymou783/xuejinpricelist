@@ -1,16 +1,13 @@
 import { ChevronRight, Compass, Dice5, Gem, Gift, Headphones, MessageCircle } from "lucide-react";
-import { categories, type SectionId } from "../catalog";
-import flame from "../assets/ice-flame-1200.webp";
-import smallFlame from "../assets/ice-flame-600.webp";
+import { categories, type Banner, type Benefit, type SectionId } from "../catalog";
+import { HomeCarousel } from "./HomeCarousel";
+import { OwnerRights } from "./OwnerRights";
 const icons = [Compass, Dice5, Gem, Headphones];
 function NewIcon() { return <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3c-1 5-3 7-8 9 5 1 7 3 8 8 1-5 3-7 8-8-5-2-7-4-8-9Z" /><path d="m24 19 1.3 4.7L30 25l-4.7 1.3L24 31l-1.3-4.7L18 25l4.7-1.3Z" fill="currentColor" stroke="none" /></svg>; }
-interface Props { heading: string; subtitle: string; onOpen: (section: SectionId) => void }
-export function CategoryHome({ heading, subtitle, onOpen }: Props) {
+interface Props { heading: string; banners: Banner[]; ownerRights: Benefit[]; domain: string; onOpen: (section: SectionId) => void }
+export function CategoryHome({ heading, banners, ownerRights, domain, onOpen }: Props) {
   return <main className="shell home-main" id="categories">
-    <section className="home-hero" aria-labelledby="page-title">
-      <img className="hero-art" src={flame} srcSet={`${smallFlame} 600w, ${flame} 1200w`} sizes="(max-width: 700px) 280px, 700px" width="1200" height="858" alt="" fetchPriority="high" />
-      <div className="hero-copy"><h1 id="page-title">{heading}</h1><p>{subtitle}</p></div>
-    </section>
+    <HomeCarousel heading={heading} banners={banners} domain={domain} />
     <section className="category-section" aria-labelledby="category-heading">
       <h2 id="category-heading" className="section-title">价目分类</h2>
       <a href="#latest" className="latest-entry entry" onClick={e => { e.preventDefault(); onOpen("latest"); }}>
@@ -26,5 +23,6 @@ export function CategoryHome({ heading, subtitle, onOpen }: Props) {
         <a href="#benefits" className="utility-entry entry" onClick={e => { e.preventDefault(); onOpen("benefits"); }}><span className="entry-icon"><Gift aria-hidden="true" /></span><span className="entry-copy"><strong>预存福利</strong><span>查看福利详情</span></span><ChevronRight className="entry-chevron" aria-hidden="true" /></a>
       </div>
     </section>
+    <OwnerRights items={ownerRights} />
   </main>;
 }

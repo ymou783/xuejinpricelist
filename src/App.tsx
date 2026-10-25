@@ -10,7 +10,7 @@ function PublicApp() {
   const catalog = useCatalog(); const route = usePageRoute(); const data = catalog.data;
   const poster = data?.entries.find(p => p.id === route.poster && (route.section === "latest" ? p.isNew : p.category === route.section));
   return <><a className="skip-link" href="#categories">跳到分类入口</a><Header brand={data?.brand ?? "雪烬电竞"} />
-    <CategoryHome heading={data?.heading ?? "三角洲价目表"} subtitle={data?.subtitle ?? "选择分类，查看你想玩的内容。"} onOpen={route.navigate} />
+    <CategoryHome heading={data?.heading ?? "三角洲价目表"} banners={data?.banners ?? []} ownerRights={data?.ownerRights ?? []} domain={data?.cdnDomain ?? "img.xuejinclub.com"} onOpen={route.navigate} />
     <footer className="shell site-footer"><span>{data?.brand ?? "雪烬电竞"} · 价目表</span><p>选择分类后可查看海报，点击海报放大。</p></footer>
     {route.section ? <ContentPanel key={route.section} section={route.section} data={data} status={catalog.status} onRetry={catalog.retry} onClose={route.back} onOpen={p => route.navigate(route.section!, p.id)} /> : null}
     {poster && data ? <Suspense fallback={<div className="viewer-loading" role="status">正在打开海报…</div>}><ImageViewer key={poster.id} poster={poster} domain={data.cdnDomain} onClose={route.back} /></Suspense> : null}

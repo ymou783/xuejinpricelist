@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { ExternalLink, Gift, Home, Image as ImageIcon, LockKeyhole, LogOut, MessageCircle, Save } from "lucide-react";
+import { Crown, ExternalLink, Gift, Home, Image as ImageIcon, Images, LockKeyhole, LogOut, MessageCircle, Save } from "lucide-react";
 import { parseCatalog, type Catalog, type Poster } from "../catalog";
 import wordmark from "../assets/wordmark.webp";
 import { ApiError, request } from "./api";
 import { PosterEditor, newPoster } from "./PosterEditor";
 import { BenefitsEditor, ContactEditor, HomeEditor } from "./ContentEditors";
+import { BannersEditor } from "./BannersEditor";
 import "./admin.css";
 interface Snapshot { catalog: Catalog; revision: string }
-type Tab = "home" | "posters" | "contact" | "benefits";
-const tabs = [{ id: "home", title: "首页设置", Icon: Home }, { id: "posters", title: "价目海报", Icon: ImageIcon }, { id: "contact", title: "联系客服", Icon: MessageCircle }, { id: "benefits", title: "预存福利", Icon: Gift }] as const;
+type Tab = "home" | "banners" | "posters" | "contact" | "benefits" | "rights";
+const tabs = [{ id: "home", title: "首页设置", Icon: Home }, { id: "banners", title: "首页轮播图", Icon: Images }, { id: "posters", title: "价目海报", Icon: ImageIcon }, { id: "contact", title: "联系客服", Icon: MessageCircle }, { id: "benefits", title: "预存福利", Icon: Gift }, { id: "rights", title: "老板权益", Icon: Crown }] as const;
 export default function AdminApp() {
   const [checking, setChecking] = useState(true); const [configured, setConfigured] = useState(true);
   const [csrf, setCsrf] = useState(""); const [password, setPassword] = useState("");
@@ -78,9 +79,11 @@ export default function AdminApp() {
     <div className="admin-layout"><nav className="admin-nav" aria-label="内容管理导航">{tabs.map(({ id, title, Icon }) => <button type="button" key={id} aria-current={tab === id ? "page" : undefined} onClick={() => setTab(id)}><Icon size={23} aria-hidden="true" />{title}</button>)}</nav>
     <main className="admin-main">{draft && snapshot ? <form onSubmit={save}><fieldset className="admin-fieldset" disabled={busy || uploading > 0}>
       {tab === "home" ? <HomeEditor catalog={draft} onChange={change} /> : null}
+      {tab === "banners" ? <BannersEditor catalog={draft} csrf={csrf} onChange={change} onBusy={onBusy} onError={onError} /> : null}
       {tab === "posters" ? <PosterEditor catalog={draft} csrf={csrf} selected={selected} footer={controls} onSelect={setSelected} onAdd={addPoster} onChange={changePoster} onRemove={removePoster} onMove={movePoster} onBusy={onBusy} onError={onError} /> : null}
       {tab === "contact" ? <ContactEditor catalog={draft} csrf={csrf} onChange={change} onBusy={onBusy} onError={onError} /> : null}
       {tab === "benefits" ? <BenefitsEditor catalog={draft} onChange={change} /> : null}
+      {tab === "rights" ? <BenefitsEditor catalog={draft} onChange={change} section="ownerRights" /> : null}
       {tab !== "posters" ? controls : null}
     </fieldset></form> : <div className="admin-empty-message"><p>内容尚未加载。</p><button className="button button-primary" onClick={() => void loadContent().catch(onError)}>重新加载内容</button></div>}
       {error ? <div className="admin-error" role="alert"><p>{error}</p><button type="button" className="text-link" onClick={() => { if (!dirty || confirm("重新加载将放弃当前修改，继续？")) void loadContent().then(() => setError("")).catch(onError); }}>重新加载内容</button></div> : null}
