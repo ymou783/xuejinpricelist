@@ -5,7 +5,7 @@ export const categories = [
 export type CategoryId = typeof categories[number]["id"];
 export type SectionId = CategoryId | "latest" | "contact" | "benefits";
 export interface ImageAsset { source: "cdn" | "upload"; objectKey: string; width: number; height: number; alt: string }
-export interface Poster { id: string; title: string; category: CategoryId; isNew: boolean; image: ImageAsset }
+export interface Poster { id: string; title: string; description: string; category: CategoryId; isNew: boolean; image: ImageAsset }
 export interface Banner { id: string; title: string; image: ImageAsset }
 export interface Contact { id: string; label: string; value: string; url?: string; image?: ImageAsset }
 export interface Benefit { id: string; title: string; body: string }
@@ -43,7 +43,8 @@ export function parseCatalog(value: unknown): Catalog {
     throw new Error("请填写老板权益的标题和正文。");
   }
   if (!unique(value.entries, item => object(item) && text(item.title, 80) && categories.some(c => c.id === item.category)
-    && typeof item.isNew === "boolean" && image(item.image))) throw new Error("海报信息不完整：请填写标题、分类、图片路径、宽高与图片说明。");
+    && typeof item.isNew === "boolean" && image(item.image)
+    && (item.description === undefined || text(item.description, 2000)))) throw new Error("海报信息不完整：请填写标题、分类、图片路径、宽高与图片说明。");
   if (!unique(value.contacts, item => object(item) && text(item.label, 50) && text(item.value, 300)
     && (item.url === undefined || (text(item.url, 1500) && /^https?:\/\//i.test(item.url) && (() => {
       try { const u = new URL(item.url); return !u.username && !u.password; } catch { return false; }
@@ -51,7 +52,7 @@ export function parseCatalog(value: unknown): Catalog {
   if (!unique(value.benefits, item => object(item) && text(item.title, 100) && text(item.body, 15000))) throw new Error("请填写福利标题和正文。");
   return {
     brand: value.brand, heading: value.heading, cdnDomain: value.cdnDomain,
-    entries: value.entries.map((raw: unknown) => { const e = raw as Poster; return { id: e.id, title: e.title, category: e.category, isNew: e.isNew, image: cleanImage(e.image) }; }),
+    entries: value.entries.map((raw: unknown) => { const e = raw as Poster; return { id: e.id, title: e.title, description: e.description ?? e.image.alt, category: e.category, isNew: e.isNew, image: cleanImage(e.image) }; }),
     contacts: value.contacts.map((raw: unknown) => { const c = raw as Contact; return { id: c.id, label: c.label, value: c.value, ...(c.url ? { url: c.url } : {}), ...(c.image ? { image: cleanImage(c.image) } : {}) }; }),
     benefits: value.benefits.map((raw: unknown) => { const b = raw as Benefit; return { id: b.id, title: b.title, body: b.body }; }),
     banners: banners.map((raw: unknown) => { const b = raw as Banner; return { id: b.id, title: b.title, image: cleanImage(b.image) }; }),

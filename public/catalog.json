@@ -14,7 +14,36 @@
         "width": 2500,
         "height": 4231,
         "alt": "雪烬电竞基础体验单价目海报"
-      }
+      },
+      "description": "雪烬电竞三角洲行动价目海报，包含图内报价及服务说明。点击图片可放大查看。"
+    },
+    {
+      "id": "basic-layout-test-02",
+      "title": "测试示例02 · 多图切换",
+      "category": "basic",
+      "isNew": false,
+      "image": {
+        "source": "cdn",
+        "objectKey": "images/2a9bfad6-6e9a-4911-abf2-ff72ff8497dc.jpg",
+        "width": 2500,
+        "height": 4231,
+        "alt": "现有价目海报的布局测试副本"
+      },
+      "description": "测试示例：复用现有海报，供你查看第二张图片的标题、说明和切换效果。"
+    },
+    {
+      "id": "basic-layout-test-03",
+      "title": "测试示例03 · 说明排版",
+      "category": "basic",
+      "isNew": false,
+      "image": {
+        "source": "cdn",
+        "objectKey": "images/2a9bfad6-6e9a-4911-abf2-ff72ff8497dc.jpg",
+        "width": 2500,
+        "height": 4231,
+        "alt": "现有价目海报的布局测试副本"
+      },
+      "description": "测试示例：继续复用现有海报。\n这是一条稍长的说明，用于查看文字换行和三张图片的切换布局，具体内容后续替换。"
     }
   ],
   "contacts": [],

@@ -8,6 +8,7 @@ import sharp from "sharp";
 import { createApp } from "../app.mjs";
 import { setPassword } from "../auth.mjs";
 import { atomicWrite, createStore } from "../store.mjs";
+import { parseCatalog } from "../../src/catalog.ts";
 let directory, server, instance, origin, cookie, csrf, password;
 async function call(url, method = "GET", body, headers = {}) {
   return fetch(origin + url, { method, headers: { origin, ...(cookie ? { cookie } : {}), ...(body && !(body instanceof FormData) ? { "content-type": "application/json" } : {}), ...headers }, body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined, redirect: "manual" });
@@ -20,7 +21,8 @@ before(async () => {
 after(async () => { instance.dispose(); await new Promise(resolve => server.close(resolve)); await rm(directory, { recursive: true, force: true }); });
 test("public homepage exposes the requested basic poster and admin API requires authentication", async () => {
   const r = await call("/catalog.json"); assert.equal(r.status, 200); assert.match(r.headers.get("cache-control"), /no-store/);
-  const data = await r.json(); assert.equal(data.entries.length, 1); assert.equal(data.entries[0].category, "basic");
+  const data = await r.json(); assert.equal(data.entries.length, 3); assert.ok(data.entries.every(e => e.category === "basic"));
+  assert.equal(new Set(data.entries.map(e => e.image.objectKey)).size, 1);
   assert.equal(data.entries[0].image.objectKey, "images/2a9bfad6-6e9a-4911-abf2-ff72ff8497dc.jpg"); assert.deepEqual(data.contacts, []);
   for (const [url, method] of [["/api/admin/content", "GET"], ["/api/admin/content", "PUT"], ["/api/admin/upload", "POST"]]) assert.equal((await call(url, method)).status, 401);
   assert.equal((await call("/admin.json")).status, 404);
@@ -61,6 +63,26 @@ test("image upload decodes content, generates real WebP variants, and publishes 
   const s = await (await call("/api/admin/content")).json(); s.catalog.entries = [{ id: "test-poster", title: "测试海报", category: "basic", isNew: true, image: { ...image, alt: "测试图片" } }];
   assert.equal((await call("/api/admin/content", "PUT", s, { "x-csrf-token": csrf })).status, 200);
   assert.equal((await (await call("/catalog.json")).json()).entries[0].isNew, true);
+});
+test("poster descriptions publish separately from image alt text and reject invalid content", async () => {
+  const saved = await (await call("/api/admin/content")).json();
+  const alt = saved.catalog.entries[0].image.alt;
+  saved.catalog.entries[0].description = "用户可见的海报说明。\n支持第二行。";
+  assert.equal((await call("/api/admin/content", "PUT", saved, { "x-csrf-token": csrf })).status, 200);
+  const published = await (await call("/catalog.json")).json();
+  assert.equal(published.entries[0].description, "用户可见的海报说明。\n支持第二行。");
+  assert.equal(published.entries[0].image.alt, alt);
+  for (const description of ["", "x".repeat(2001), 42]) {
+    const current = await (await call("/api/admin/content")).json(); current.catalog.entries[0].description = description;
+    assert.equal((await call("/api/admin/content", "PUT", current, { "x-csrf-token": csrf })).status, 400);
+  }
+});
+test("old posters without a public description preserve their image explanation", async () => {
+  const saved = await (await call("/api/admin/content")).json();
+  const legacy = structuredClone(saved.catalog); delete legacy.entries[0].description;
+  const normalized = parseCatalog(legacy);
+  assert.equal(normalized.entries[0].description, legacy.entries[0].image.alt);
+  assert.deepEqual(normalized.entries[0].image, legacy.entries[0].image);
 });
 test("legacy saved catalogs keep existing content and migrate without the retired subtitle", async () => {
   const saved = await (await call("/api/admin/content")).json();

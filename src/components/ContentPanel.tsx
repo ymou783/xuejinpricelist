@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { AlertCircle, ArrowLeft, Check, Copy, ExternalLink, Gift, Image as ImageIcon, MessageCircle, X, ZoomIn } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, Check, Copy, ExternalLink, Gift, Image as ImageIcon, MessageCircle, X, ZoomIn } from "lucide-react";
 import { categories, type Catalog, type Poster, type SectionId } from "../catalog";
 import { imageUrl, responsiveSources } from "../cdn";
 interface Props { section: SectionId; data: Catalog | null; status: string; onRetry: () => void; onClose: () => void; onOpen: (poster: Poster) => void }
@@ -22,6 +22,7 @@ export function ContentPanel({ section, data, status, onRetry, onClose, onOpen }
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const posters = data?.entries.filter(p => section === "latest" ? p.isNew : p.category === section) ?? [];
   const current = posters.find(p => p.id === active) ?? posters[0];
+  const currentIndex = posters.findIndex(p => p.id === current?.id);
   const title = categories.find(c => c.id === section)?.title ?? titles[section as keyof typeof titles];
   useLayoutEffect(() => {
     const element = dialog.current; const overflow = document.body.style.overflow;
@@ -34,6 +35,10 @@ export function ContentPanel({ section, data, status, onRetry, onClose, onOpen }
       if (copyTimer.current) clearTimeout(copyTimer.current); copyTimer.current = setTimeout(() => setCopied(""), 2500);
     } catch { setCopyError(true); }
   };
+  const selectPoster = (poster: Poster) => {
+    setActive(poster.id); scroll.current?.scrollTo({ top: 0 });
+    requestAnimationFrame(() => dialog.current?.querySelector<HTMLElement>(`[data-poster-id="${poster.id}"]`)?.scrollIntoView({ block: "nearest", inline: "nearest" }));
+  };
   return <dialog ref={dialog} className="content-panel" aria-labelledby="panel-title" onCancel={e => { e.preventDefault(); onClose(); }} onClick={e => { if (e.target === e.currentTarget) { const r = e.currentTarget.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) onClose(); } }}>
     <header className="panel-header"><button className="icon-button" aria-label="返回分类" onClick={onClose}><ArrowLeft aria-hidden="true" /></button><h2 id="panel-title">{title}</h2><button className="icon-button panel-close" aria-label="关闭内容窗口" onClick={onClose}><X aria-hidden="true" /></button></header>
     <div className="panel-scroll" ref={scroll}>
@@ -42,7 +47,14 @@ export function ContentPanel({ section, data, status, onRetry, onClose, onOpen }
       {data && section === "contact" ? data.contacts.length ? <div className="contact-list">{data.contacts.map(c => <article key={c.id} className="contact-item"><h3>{c.label}</h3><p className="contact-value">{c.value}</p>{c.image ? <img className="contact-qr" src={imageUrl(data.cdnDomain, c.image, 600)} width={c.image.width} height={c.image.height} alt={c.image.alt} /> : null}<div className="contact-actions"><button className="button button-secondary" onClick={() => void copy(c.value, c.id)}>{copied === c.id ? <Check size={18} /> : <Copy size={18} />}{copied === c.id ? "已复制" : "复制联系方式"}</button>{c.url ? <a className="button button-primary" href={c.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={18} />联系客服</a> : null}</div></article>)}<p className="copy-status" role="status">{copyError ? "复制暂时不可用，请长按或选中号码手动复制。" : copied ? "联系方式已复制" : ""}</p></div> : <Empty section={section} onClose={onClose} /> : null}
       {data && section === "benefits" ? data.benefits.length ? <div className="benefit-list">{data.benefits.map(b => <article key={b.id}><h3>{b.title}</h3><p>{b.body}</p></article>)}</div> : <Empty section={section} onClose={onClose} /> : null}
       {data && section !== "contact" && section !== "benefits" ? current ? <>
-        {posters.length > 1 ? <div className="poster-tabs" aria-label="选择海报">{posters.map(p => <button key={p.id} aria-pressed={p.id === current.id} onClick={() => { setActive(p.id); scroll.current?.scrollTo({ top: 0 }); }}>{p.title}</button>)}</div> : <h3 className="poster-caption">{current.title}</h3>}
+        {posters.length > 1 ? <div className="poster-switcher">
+          <div className="poster-switcher-summary"><span role="status">第 {currentIndex + 1} 张，共 {posters.length} 张</span><div>
+            <button type="button" className="icon-button" aria-label="上一张海报" disabled={currentIndex === 0} onClick={() => selectPoster(posters[currentIndex - 1])}><ArrowLeft size={19} aria-hidden="true" /></button>
+            <button type="button" className="icon-button" aria-label="下一张海报" disabled={currentIndex === posters.length - 1} onClick={() => selectPoster(posters[currentIndex + 1])}><ArrowRight size={19} aria-hidden="true" /></button>
+          </div></div>
+          <div className="poster-tabs" role="group" aria-label="选择海报">{posters.map(p => <button key={p.id} data-poster-id={p.id} aria-pressed={p.id === current.id} onClick={() => selectPoster(p)}>{p.title}</button>)}</div>
+        </div> : null}
+        <div className="poster-info"><h3>{current.title}</h3><p>{current.description}</p></div>
         <PosterPreview key={current.id} poster={current} domain={data.cdnDomain} onOpen={() => onOpen(current)} />
       </> : <Empty section={section} onClose={onClose} /> : null}
     </div>
