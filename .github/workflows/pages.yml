@@ -7,8 +7,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -17,6 +15,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
     steps:
       - name: Check out source
         uses: actions/checkout@v6
@@ -42,10 +43,33 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+      actions: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Prevent the legacy publisher from overwriting the compiled website
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          PAGES_LEGACY_RUNS=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&per_page=100" \
+            --jq ".workflow_runs[] | select(.head_sha == \"$GITHUB_SHA\" and .name == \"pages build and deployment\" and .status != \"completed\") | .id")
+          for PAGES_RUN_ID in $PAGES_LEGACY_RUNS; do
+            echo "Stopping the source-only Pages publisher for this revision: $PAGES_RUN_ID"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/actions/runs/$PAGES_RUN_ID/cancel" --silent || \
+              test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PAGES_RUN_ID" --jq .status)" = completed
+            for PAGES_ATTEMPT in $(seq 1 30); do
+              if test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PAGES_RUN_ID" --jq .status)" = completed; then
+                break
+              fi
+              sleep 2
+            done
+            test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PAGES_RUN_ID" --jq .status)" = completed
+          done
       - name: Deploy compiled website
         id: deployment
         uses: actions/deploy-pages@v4

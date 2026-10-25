@@ -12,6 +12,8 @@
 
 若 Actions 显示成功但页面仍是旧内容，先确认运行的是本仓库的 **Deploy price list to GitHub Pages** 工作流，再刷新浏览器缓存；不要再次选择发布根目录的默认 Jekyll 流程。
 
+工作流还会在发布前取消同一次提交中仍未结束的旧版 `pages build and deployment`，确认它停止后再发布编译产物，防止源码覆盖构建结果。取消图标属于旧流程；请以 **Deploy price list to GitHub Pages** 的结果为准。仍建议将 Source 设为 GitHub Actions，避免启动多余的旧流程。
+
 ## 先启动完整版本
 
 服务器安装 Node.js 24+ 和 Git 后，在自己的应用目录执行：
