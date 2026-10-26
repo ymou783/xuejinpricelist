@@ -96,7 +96,7 @@ sudo systemctl restart xuejin-pricelist
 福利与老板权益图片功能同时修改共享内容验证和服务端能力标记，更新时应包含整个 `src/` 与 `server/app.mjs`，完成构建后重启原 Node 进程。保留原工作目录、`DATA_DIR`、端口和代理设置。仅刷新网页不能让正在运行的 Node 进程重新加载验证模块；后台仍提示「尚未启用福利图片」或「尚未启用权益图片」时检查是否重启了实际提供 8081 服务的进程。`/api/admin/session` 的 `benefitImages` 和 `ownerRightsImages` 均为 true 表示支持这两种图片。保存和取消只影响当前栏目，其他未发布草稿不会阻止客服、轮播等栏目发布。原有纯文字内容和持久数据兼容。
 
 - 后台直接上传：文件在服务器 `DATA_DIR/uploads/`，自动生成响应式 WebP；不自动写 COS。若今后迁移服务器，必须同时迁移上传目录。
-- 继续使用 COS：先自行将原图上传到上海桶 `xuejinpricelist-1440012515`，再在后台填写对象路径与尺寸。域名为 `img.xuejinclub.com`，现有 CNAME 为 `img.xuejinclub.com.eo.dnse2.com`。不要把签名临时 URL 填进对象路径。
+- 继续使用 COS：先自行将原图上传到上海桶 `xuejinpricelist-1440012515`，再在轮播图、海报、客服、预存福利或老板权益编辑器填写「CDN 对象路径」与原图宽高。域名为 `img.xuejinclub.com`，现有 CNAME 为 `img.xuejinclub.com.eo.dnse2.com`。路径不含域名、开头的 `/` 或查询参数，不填写签名临时 URL。
 - HTML 和内容 JSON 不长期缓存；带哈希的构建资源和唯一目录名的图片可长期缓存。更新海报建议上传新文件，保存新路径。
 - 原有测试样图 5.37MB，经 1200px WebP 参数处理约 198KiB，曾验证缓存 HIT；该结果仅代表这张样图，不是其他图片的大小保证。
 

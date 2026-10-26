@@ -203,6 +203,28 @@ test("contact entries accept non-web text and retain image metadata", async () =
   assert.deepEqual(published.contacts, saved.catalog.contacts);
   assert.deepEqual((await createStore(directory).snapshot()).catalog.contacts, saved.catalog.contacts);
 });
+test("all five managed image types publish CDN object paths and retain metadata", async () => {
+  const saved = await (await call("/api/admin/content")).json();
+  const image = { source: "cdn", objectKey: "images/中文 图片.jpg", width: 2500, height: 4231, alt: "CDN 图片说明" };
+  for (const key of ["entries", "banners", "contacts", "benefits", "ownerRights"]) saved.catalog[key][0].image = image;
+  assert.equal((await call("/api/admin/content", "PUT", saved, { "x-csrf-token": csrf })).status, 200);
+  const published = await (await call("/catalog.json")).json();
+  const stored = (await createStore(directory).snapshot()).catalog;
+  for (const key of ["entries", "banners", "contacts", "benefits", "ownerRights"]) {
+    assert.deepEqual(published[key][0].image, image);
+    assert.deepEqual(stored[key][0].image, image);
+  }
+});
+test("all five CDN image inputs reject URLs, leading slashes, traversal and query strings", async () => {
+  const saved = await (await call("/api/admin/content")).json();
+  for (const key of ["entries", "banners", "contacts", "benefits", "ownerRights"]) {
+    for (const objectKey of ["https://img.example.com/images/a.jpg", "/images/a.jpg", "../admin.json", "images/a.jpg?signature=test"]) {
+      const invalid = structuredClone(saved); invalid.catalog[key][0].image.objectKey = objectKey;
+      assert.equal((await call("/api/admin/content", "PUT", invalid, { "x-csrf-token": csrf })).status, 400);
+    }
+  }
+  assert.deepEqual((await (await call("/catalog.json")).json()), saved.catalog);
+});
 test("upload rejects disguised script images and files above the size limit", async () => {
   for (const [bytes, filename] of [[Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'), "fake.png"], [Buffer.alloc(16 * 1024 * 1024), "large.jpg"]]) {
     const form = new FormData(); form.append("image", new Blob([bytes], { type: "image/png" }), filename);

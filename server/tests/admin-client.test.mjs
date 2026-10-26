@@ -5,6 +5,7 @@ import { ApiError, request } from "../../src/admin/api.ts";
 import { readFile } from "node:fs/promises";
 import { contactHref, parseCatalog } from "../../src/catalog.ts";
 import { mergeSection, sectionDirty } from "../../src/admin/sections.ts";
+import { cdnImage } from "../../src/admin/imageSource.ts";
 
 test("all admin content types can receive unique IDs without secure-context randomUUID", () => {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, "crypto");
@@ -90,4 +91,25 @@ test("only safe HTTP contact entries become links; other contact text stays plai
   assert.equal(contactHref("https://example.com/support"), "https://example.com/support");
   assert.equal(contactHref("  HTTP://EXAMPLE.COM/path  "), "http://example.com/path");
   for (const value of [undefined, "微信：测试账号", "weixin://example", "javascript:alert(1)", "https://user:pass@example.com"]) assert.equal(contactHref(value), undefined);
+});
+test("switching an uploaded image to CDN requires the new image dimensions", async () => {
+  const uploaded = { source: "upload", objectKey: "11111111-1111-4111-8111-111111111111/original.webp", width: 640, height: 960, alt: "客服图片" };
+  const image = cdnImage(uploaded, "images/客服图片.jpg", "备用说明");
+  assert.equal(image.source, "cdn"); assert.equal(image.width, 0); assert.equal(image.height, 0);
+  assert.equal(image.alt, uploaded.alt);
+  assert.equal(uploaded.source, "upload"); assert.equal(uploaded.width, 640);
+  const catalog = JSON.parse(await readFile(new URL("../../public/catalog.json", import.meta.url), "utf8"));
+  catalog.contacts = [{ id: "cdn-contact", label: "客服", value: "扫码添加", image }];
+  assert.throws(() => parseCatalog(catalog), /客服/);
+  catalog.contacts[0].image = { ...image, width: 2500, height: 4231 };
+  assert.deepEqual(parseCatalog(catalog).contacts[0].image, catalog.contacts[0].image);
+});
+test("CDN path edits reset dimensions, preserve unchanged paths and allow clearing optional images", () => {
+  const image = { source: "cdn", objectKey: "images/原图.jpg", width: 2500, height: 4231, alt: "原图片说明" };
+  assert.deepEqual(cdnImage(image, image.objectKey, "备用说明"), image);
+  const changed = cdnImage(image, "images/新图.jpg", "备用说明");
+  assert.equal(changed.width, 0); assert.equal(changed.height, 0); assert.equal(changed.alt, image.alt);
+  assert.equal(cdnImage(image, "", "说明"), undefined);
+  const required = cdnImage(image, "", "说明", true);
+  assert.equal(required.objectKey, ""); assert.equal(required.source, "cdn");
 });

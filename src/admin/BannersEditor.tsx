@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import type { Banner, Catalog, ImageAsset } from "../catalog";
 import { UploadField } from "./UploadField";
 import { contentId } from "./contentId";
+import { CdnImageFields } from "./CdnImageFields";
 
 interface Props {
   catalog: Catalog;
@@ -34,9 +35,7 @@ export function BannersEditor({ catalog, csrf, onChange, onBusy, onError }: Prop
       </div></div>
       <label className="form-field"><span>轮播图名称</span><input required maxLength={80} value={banner.title} onChange={e => update(banner.id, { title: e.target.value })} /></label>
       <div className="form-field"><span>上传轮播图</span><UploadField csrf={csrf} domain={catalog.cdnDomain} image={banner.image} label={"上传轮播图 " + (position + 1)} onBusy={onBusy} onError={onError} onUploaded={image => update(banner.id, { image: { ...image, alt: banner.image.alt || banner.title || "首页轮播图" } })} /></div>
-      <label className="form-field"><span>CDN 对象路径</span><input maxLength={600} value={banner.image.source === "cdn" ? banner.image.objectKey : ""} disabled={banner.image.source === "upload"} placeholder="images/横幅.jpg" onChange={e => updateImage(banner.id, { objectKey: e.target.value })} /></label>
-      {banner.image.source === "upload" ? <p className="field-help">当前使用服务器上传图片。<button type="button" className="text-link" onClick={() => updateImage(banner.id, { source: "cdn", objectKey: "" })}>改用 CDN 路径</button></p> : null}
-      <div className="form-two-columns"><label className="form-field"><span>原图宽度</span><input type="number" min={1} max={30000} required value={banner.image.width || ""} onChange={e => updateImage(banner.id, { width: Number(e.target.value) })} /></label><label className="form-field"><span>原图高度</span><input type="number" min={1} max={30000} required value={banner.image.height || ""} onChange={e => updateImage(banner.id, { height: Number(e.target.value) })} /></label></div>
+      <CdnImageFields image={banner.image} alt={banner.title || "首页轮播图"} required onChange={image => { if (image) update(banner.id, { image }); }} />
       <label className="form-field"><span>图片说明</span><input required maxLength={500} value={banner.image.alt} onChange={e => updateImage(banner.id, { alt: e.target.value })} /></label>
     </article>)}</div>
   </>;
