@@ -93,7 +93,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .utility-entry .entry-copy strong { font-size:23px; }
 .utility-entry .entry-copy > span { font-size:18px; }
 .site-footer { margin-top:30px; border-top:1px solid var(--line); color:var(--muted); padding:10px 0 16px; text-align:center; font-size:14px; line-height:1.8; letter-spacing:.5px; }
-.site-footer p { margin:0; }
 .button { display:inline-flex; align-items:center; justify-content:center; gap:9px; border:1px solid transparent; min-height:48px; border-radius:10px; padding:11px 22px; font-size:16px; line-height:1.5; font-weight:500; white-space:nowrap; }
 .button-primary { background:var(--accent); color:#fff; border-color:var(--accent); }
 .button-primary:hover:not(:disabled) { background:var(--accent-hover); border-color:var(--accent-hover); }
@@ -141,7 +140,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .contact-item:last-of-type { border-bottom:0; margin-bottom:0; }
 .contact-item h3,.benefit-list h3 { font-size:23px; margin:0 0 10px; }
 .contact-value { font-size:20px; user-select:all; overflow-wrap:anywhere; margin:0 0 20px; line-height:1.7; }
-.contact-qr { width:min(260px,100%); height:auto; display:block; margin-bottom:20px; }
+.contact-extra { white-space:pre-wrap; overflow-wrap:anywhere; font-size:16px; line-height:1.8; color:#53698e; margin:0 0 20px; }
+.contact-image-preview { width:min(260px,100%); padding:0; margin-bottom:20px; }
+.contact-image-preview .poster-zoom { font-size:12px; padding:7px 9px; }
+.rights-image-preview { width:min(520px,100%); padding:18px 0 0; }
+.rights-image-preview .poster-preview img { max-height:360px; object-fit:contain; }
 .contact-actions { display:flex; gap:10px; flex-wrap:wrap; }
 .copy-status { color:var(--muted); font-size:14px; }
 .benefit-list article { border-bottom:1px solid var(--line); padding-bottom:22px; margin-bottom:24px; }

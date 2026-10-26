@@ -3,13 +3,17 @@ export const categories = [
   { id: "special", title: "特色趣味单" }, { id: "companion", title: "陪玩单" },
 ] as const;
 export type CategoryId = typeof categories[number]["id"];
-export type SectionId = CategoryId | "latest" | "contact" | "benefits";
+export type SectionId = CategoryId | "latest" | "contact" | "benefits" | "rights";
 export interface ImageAsset { source: "cdn" | "upload"; objectKey: string; width: number; height: number; alt: string }
 export interface Poster { id: string; title: string; description: string; category: CategoryId; isNew: boolean; image: ImageAsset }
 export interface Banner { id: string; title: string; image: ImageAsset }
 export interface Contact { id: string; label: string; value: string; url?: string; image?: ImageAsset }
 export interface Benefit { id: string; title: string; body: string; image?: ImageAsset }
 export interface Catalog { brand: string; heading: string; cdnDomain: string; entries: Poster[]; contacts: Contact[]; benefits: Benefit[]; banners: Banner[]; ownerRights: Benefit[] }
+export function contactHref(value?: string): string | undefined {
+  if (!value) return;
+  try { const url = new URL(value.trim()); if (["http:", "https:"].includes(url.protocol) && !url.username && !url.password) return url.href; } catch { /* Plain contact text is displayed without linking. */ }
+}
 function object(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value); }
 function text(value: unknown, max = 200): value is string { return typeof value === "string" && value.trim().length > 0 && value.length <= max; }
 function validId(value: unknown): value is string { return text(value, 80) && /^[a-zA-Z0-9_-]+$/.test(value); }
@@ -26,6 +30,12 @@ function unique(items: unknown[], check: (item: unknown) => boolean) {
     ids.add(item.id); return true;
   });
 }
+function imageContent(item: unknown) {
+  return object(item) && text(item.title, 100)
+    && (item.body === undefined || (typeof item.body === "string" && item.body.length <= 15000))
+    && (text(item.body, 15000) || item.image !== undefined)
+    && (item.image === undefined || image(item.image));
+}
 export function parseCatalog(value: unknown): Catalog {
   if (!object(value) || !text(value.brand, 30) || !text(value.heading, 40)
     || !text(value.cdnDomain, 253) || !/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i.test(value.cdnDomain)
@@ -38,28 +48,24 @@ export function parseCatalog(value: unknown): Catalog {
     || !unique(banners, item => object(item) && text(item.title, 80) && image(item.image))) {
     throw new Error("轮播图信息不完整，请填写名称、图片路径、宽高与图片说明，最多添加 10 张。");
   }
-  if (!Array.isArray(ownerRights) || ownerRights.length > 50
-    || !unique(ownerRights, item => object(item) && text(item.title, 100) && text(item.body, 15000))) {
-    throw new Error("请填写老板权益的标题和正文。");
+  if (!Array.isArray(ownerRights) || ownerRights.length > 50 || !unique(ownerRights, imageContent)) {
+    throw new Error("请填写权益标题，并添加正文或图片。");
   }
   if (!unique(value.entries, item => object(item) && text(item.title, 80) && categories.some(c => c.id === item.category)
     && typeof item.isNew === "boolean" && image(item.image)
     && (item.description === undefined || text(item.description, 2000)))) throw new Error("海报信息不完整：请填写标题、分类、图片路径、宽高与图片说明。");
   if (!unique(value.contacts, item => object(item) && text(item.label, 50) && text(item.value, 300)
-    && (item.url === undefined || (text(item.url, 1500) && /^https?:\/\//i.test(item.url) && (() => {
-      try { const u = new URL(item.url); return !u.username && !u.password; } catch { return false; }
-    })())) && (item.image === undefined || image(item.image)))) throw new Error("客服信息不完整，链接须为 http 或 https 地址。");
-  if (!unique(value.benefits, item => object(item) && text(item.title, 100)
-    && (item.body === undefined || (typeof item.body === "string" && item.body.length <= 15000))
-    && (text(item.body, 15000) || item.image !== undefined)
-    && (item.image === undefined || image(item.image)))) throw new Error("请填写福利标题，并添加正文或图片。");
+    && (item.url === undefined || (text(item.url, 1500) && !/^(?:javascript|data|vbscript):/i.test(item.url.trim())
+      && (!/^https?:/i.test(item.url.trim()) || contactHref(item.url) !== undefined)))
+    && (item.image === undefined || image(item.image)))) throw new Error("客服信息不完整，客服链接或说明可填写文字或有效的 http/https 网址。");
+  if (!unique(value.benefits, imageContent)) throw new Error("请填写福利标题，并添加正文或图片。");
   return {
     brand: value.brand, heading: value.heading, cdnDomain: value.cdnDomain,
     entries: value.entries.map((raw: unknown) => { const e = raw as Poster; return { id: e.id, title: e.title, description: e.description ?? e.image.alt, category: e.category, isNew: e.isNew, image: cleanImage(e.image) }; }),
     contacts: value.contacts.map((raw: unknown) => { const c = raw as Contact; return { id: c.id, label: c.label, value: c.value, ...(c.url ? { url: c.url } : {}), ...(c.image ? { image: cleanImage(c.image) } : {}) }; }),
     benefits: value.benefits.map((raw: unknown) => { const b = raw as Benefit; return { id: b.id, title: b.title, body: b.body ?? "", ...(b.image ? { image: cleanImage(b.image) } : {}) }; }),
     banners: banners.map((raw: unknown) => { const b = raw as Banner; return { id: b.id, title: b.title, image: cleanImage(b.image) }; }),
-    ownerRights: ownerRights.map((raw: unknown) => { const b = raw as Benefit; return { id: b.id, title: b.title, body: b.body }; }),
+    ownerRights: ownerRights.map((raw: unknown) => { const b = raw as Benefit; return { id: b.id, title: b.title, body: b.body ?? "", ...(b.image ? { image: cleanImage(b.image) } : {}) }; }),
   };
 }
 function cleanImage(i: ImageAsset): ImageAsset { return { source: i.source, objectKey: i.objectKey, width: i.width, height: i.height, alt: i.alt }; }

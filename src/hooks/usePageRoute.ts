@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { categories, type SectionId } from "../catalog";
-const sections = new Set<string>([...categories.map(c => c.id), "latest", "contact", "benefits"]);
+const sections = new Set<string>([...categories.map(c => c.id), "latest", "contact", "benefits", "rights"]);
 interface PageRoute { section: SectionId | null; poster: string | null; selected: string | null }
 function validPoster(value: string | null | undefined) { return value && /^[a-zA-Z0-9_-]{1,80}$/.test(value) ? value : null; }
 function read(): PageRoute {
@@ -25,7 +25,8 @@ export function usePageRoute() {
   const back = useCallback(() => {
     if (history.state?.xuejin) history.back();
     else {
-      const current = read(); history.replaceState(null, "", location.pathname + location.search + (current.poster && current.section ? `#${current.section}?item=${current.poster}` : "")); setRoute(read());
+      const current = read(); history.replaceState(null, "", location.pathname + location.search + (current.section === "rights" ? "#rights" : current.poster && current.section ? `#${current.section}?item=${current.poster}` : "")); setRoute(read());
+      if (current.section === "rights") requestAnimationFrame(() => document.getElementById("rights")?.scrollIntoView({ block: "start" }));
     }
   }, []);
   return { ...route, navigate, select, back };

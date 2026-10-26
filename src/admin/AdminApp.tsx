@@ -14,6 +14,7 @@ export default function AdminApp() {
   const [checking, setChecking] = useState(true); const [configured, setConfigured] = useState(true);
   const [csrf, setCsrf] = useState(""); const [password, setPassword] = useState("");
   const [benefitImages, setBenefitImages] = useState(false);
+  const [rightsImages, setRightsImages] = useState(false);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null); const [draft, setDraft] = useState<Catalog | null>(null);
   const [tab, setTab] = useState<AdminSection>("posters"); const [selected, setSelected] = useState("");
   const [busy, setBusy] = useState(false); const [uploading, setUploading] = useState(0);
@@ -35,8 +36,8 @@ export default function AdminApp() {
     document.title = "内容管理｜雪烬电竞";
     const controller = new AbortController();
     void (async () => {
-      try { const session = await request<{ configured: boolean; authenticated: boolean; csrf?: string; benefitImages?: boolean }>("session", { signal: controller.signal });
-        setConfigured(session.configured); setCsrf(session.csrf || ""); setBenefitImages(session.benefitImages === true); if (session.authenticated) await loadContent(controller.signal);
+      try { const session = await request<{ configured: boolean; authenticated: boolean; csrf?: string; benefitImages?: boolean; ownerRightsImages?: boolean }>("session", { signal: controller.signal });
+        setConfigured(session.configured); setCsrf(session.csrf || ""); setBenefitImages(session.benefitImages === true); setRightsImages(session.ownerRightsImages === true); if (session.authenticated) await loadContent(controller.signal);
       } catch (e) { if (!controller.signal.aborted) onError(e); } finally { if (!controller.signal.aborted) setChecking(false); }
     })(); return () => controller.abort();
   }, [onError]);
@@ -47,13 +48,14 @@ export default function AdminApp() {
   }, [dirty, uploading]);
   const login = async (event: FormEvent) => {
     event.preventDefault(); setBusy(true); setError("");
-    try { const response = await request<{ csrf: string; benefitImages?: boolean }>("login", { method: "POST", body: JSON.stringify({ password }) }); setCsrf(response.csrf); setBenefitImages(response.benefitImages === true); setPassword(""); await loadContent(); }
+    try { const response = await request<{ csrf: string; benefitImages?: boolean; ownerRightsImages?: boolean }>("login", { method: "POST", body: JSON.stringify({ password }) }); setCsrf(response.csrf); setBenefitImages(response.benefitImages === true); setRightsImages(response.ownerRightsImages === true); setPassword(""); await loadContent(); }
     catch (e) { onError(e); } finally { setBusy(false); }
   };
   const save = async (event: FormEvent) => {
     event.preventDefault(); if (!draft || !snapshot || uploading || busy || !activeDirty) return; setBusy(true); setError("");
     try {
       if (tab === "benefits" && !benefitImages && draft.benefits.some(item => item.image)) throw new Error("请更新并重启后台服务后，再保存福利图片。当前草稿已保留。");
+      if (tab === "rights" && !rightsImages && draft.ownerRights.some(item => item.image)) throw new Error("请更新并重启后台服务后，再保存权益图片。当前草稿已保留。");
       const catalog = parseCatalog(mergeSection(snapshot.catalog, draft, tab));
       const result = await request<Snapshot>("content", { method: "PUT", body: JSON.stringify({ catalog, revision: snapshot.revision }) }, csrf);
       setSnapshot(result); setDraft(current => current ? mergeSection(current, result.catalog, tab) : structuredClone(result.catalog)); setNotice("当前栏目已保存发布，刷新网站即可查看。");
@@ -87,7 +89,7 @@ export default function AdminApp() {
       {tab === "posters" ? <PosterEditor catalog={draft} csrf={csrf} selected={selected} footer={controls} onSelect={setSelected} onAdd={addPoster} onChange={changePoster} onRemove={removePoster} onMove={movePoster} onBusy={onBusy} onError={onError} /> : null}
       {tab === "contact" ? <ContactEditor catalog={draft} csrf={csrf} onChange={change} onBusy={onBusy} onError={onError} /> : null}
       {tab === "benefits" ? <BenefitsEditor catalog={draft} csrf={csrf} imageEnabled={benefitImages} onChange={change} onBusy={onBusy} onError={onError} /> : null}
-      {tab === "rights" ? <BenefitsEditor catalog={draft} csrf={csrf} imageEnabled={benefitImages} onChange={change} onBusy={onBusy} onError={onError} section="ownerRights" /> : null}
+      {tab === "rights" ? <BenefitsEditor catalog={draft} csrf={csrf} imageEnabled={rightsImages} onChange={change} onBusy={onBusy} onError={onError} section="ownerRights" /> : null}
       {tab !== "posters" ? controls : null}
     </fieldset></form> : <div className="admin-empty-message"><p>内容尚未加载。</p><button className="button button-primary" onClick={() => void loadContent().catch(onError)}>重新加载内容</button></div>}
       {otherDirty ? <p className="admin-draft-hint">其他栏目有未发布的修改，可切换回去继续编辑；保存和取消仅针对当前栏目。</p> : null}

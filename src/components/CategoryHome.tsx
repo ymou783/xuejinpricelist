@@ -5,8 +5,8 @@ import { HomeCarousel } from "./HomeCarousel";
 import { OwnerRights } from "./OwnerRights";
 const icons = [Compass, Dice5, Gem, Headphones];
 function NewIcon() { return <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3c-1 5-3 7-8 9 5 1 7 3 8 8 1-5 3-7 8-8-5-2-7-4-8-9Z" /><path d="m24 19 1.3 4.7L30 25l-4.7 1.3L24 31l-1.3-4.7L18 25l4.7-1.3Z" fill="currentColor" stroke="none" /></svg>; }
-interface Props { heading: string; banners: Banner[]; ownerRights: Benefit[]; domain: string; search: ReactNode; onOpen: (section: SectionId) => void }
-export function CategoryHome({ heading, banners, ownerRights, domain, search, onOpen }: Props) {
+interface Props { heading: string; banners: Banner[]; ownerRights: Benefit[]; domain: string; search: ReactNode; onOpen: (section: SectionId) => void; onOpenRightsImage: (id: string) => void }
+export function CategoryHome({ heading, banners, ownerRights, domain, search, onOpen, onOpenRightsImage }: Props) {
   return <main className="shell home-main" id="categories">
     <HomeCarousel heading={heading} banners={banners} domain={domain} />
     {search}
@@ -25,6 +25,6 @@ export function CategoryHome({ heading, banners, ownerRights, domain, search, on
         <a href="#benefits" className="utility-entry entry" onClick={e => { e.preventDefault(); onOpen("benefits"); }}><span className="entry-icon"><Gift aria-hidden="true" /></span><span className="entry-copy"><strong>预存福利</strong><span>查看福利详情</span></span><ChevronRight className="entry-chevron" aria-hidden="true" /></a>
       </div>
     </section>
-    <OwnerRights items={ownerRights} />
+    <OwnerRights items={ownerRights} domain={domain} onOpenImage={onOpenRightsImage} />
   </main>;
 }

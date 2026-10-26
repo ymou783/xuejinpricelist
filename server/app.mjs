@@ -45,7 +45,7 @@ export async function createApp({ directory, trustProxy = false } = {}) {
   const cookieOptions = req => ({ httpOnly: true, secure: req.secure, sameSite: "strict", path: "/", maxAge: ttl });
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
   app.get("/catalog.json", async (_req, res) => res.json((await store.snapshot()).catalog));
-  app.get("/api/admin/session", (req, res) => { const s = session(req); res.json({ configured: !!record, authenticated: !!s, benefitImages: true, ...(s ? { csrf: s.csrf } : {}) }); });
+  app.get("/api/admin/session", (req, res) => { const s = session(req); res.json({ configured: !!record, authenticated: !!s, benefitImages: true, ownerRightsImages: true, ...(s ? { csrf: s.csrf } : {}) }); });
   app.post("/api/admin/login", sameOrigin, async (req, res) => {
     if (!record) return res.status(503).json({ error: "尚未设置管理密码，请先在服务器运行 npm run admin:password，再重启服务。" });
     const key = req.ip; const now = Date.now(); const previous = attempts.get(key);
@@ -57,7 +57,7 @@ export async function createApp({ directory, trustProxy = false } = {}) {
     }
     attempts.delete(key); const old = session(req); if (old) sessions.delete(old.token);
     const token = randomBytes(32).toString("hex"); const entry = { csrf: randomBytes(32).toString("hex"), expires: now + ttl };
-    sessions.set(token, entry); res.cookie(cookieName, token, cookieOptions(req)); res.json({ csrf: entry.csrf, benefitImages: true });
+    sessions.set(token, entry); res.cookie(cookieName, token, cookieOptions(req)); res.json({ csrf: entry.csrf, benefitImages: true, ownerRightsImages: true });
   });
   app.use("/api/admin", authenticate);
   app.get("/api/admin/content", async (_req, res) => res.json(await store.snapshot()));

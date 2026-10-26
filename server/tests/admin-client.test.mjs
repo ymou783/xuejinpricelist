@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { contentId } from "../../src/admin/contentId.ts";
 import { ApiError, request } from "../../src/admin/api.ts";
 import { readFile } from "node:fs/promises";
-import { parseCatalog } from "../../src/catalog.ts";
+import { contactHref, parseCatalog } from "../../src/catalog.ts";
 import { mergeSection, sectionDirty } from "../../src/admin/sections.ts";
 
 test("all admin content types can receive unique IDs without secure-context randomUUID", () => {
@@ -71,4 +71,23 @@ test("cancel only resets the active section and home saves all three home fields
   assert.deepEqual([home.brand, home.heading, home.cdnDomain], [draft.brand, draft.heading, draft.cdnDomain]);
   assert.deepEqual(home.entries, saved.entries);
   assert.deepEqual(home.contacts, saved.contacts);
+});
+test("banner publishing does not validate or publish unfinished benefit and owner drafts", async () => {
+  const saved = parseCatalog(JSON.parse(await readFile(new URL("../../public/catalog.json", import.meta.url), "utf8")));
+  const draft = structuredClone(saved);
+  draft.benefits = [{ id: "unfinished-benefit", title: "", body: "" }];
+  draft.ownerRights = [{ id: "unfinished-right", title: "", body: "" }];
+  draft.banners = [{ id: "new-banner", title: "一周年店庆", image: saved.entries[0].image }];
+  const published = parseCatalog(mergeSection(saved, draft, "banners"));
+  assert.deepEqual(published.banners, draft.banners);
+  assert.deepEqual(published.benefits, saved.benefits);
+  assert.deepEqual(published.ownerRights, saved.ownerRights);
+  const afterSave = mergeSection(draft, published, "banners");
+  assert.deepEqual(afterSave.benefits, draft.benefits);
+  assert.deepEqual(afterSave.ownerRights, draft.ownerRights);
+});
+test("only safe HTTP contact entries become links; other contact text stays plain", () => {
+  assert.equal(contactHref("https://example.com/support"), "https://example.com/support");
+  assert.equal(contactHref("  HTTP://EXAMPLE.COM/path  "), "http://example.com/path");
+  for (const value of [undefined, "微信：测试账号", "weixin://example", "javascript:alert(1)", "https://user:pass@example.com"]) assert.equal(contactHref(value), undefined);
 });

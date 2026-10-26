@@ -33,7 +33,7 @@ test("login rejects cross-origin and wrong passwords, sets a protected cookie", 
   const r = await call("/api/admin/login", "POST", { password }, { "x-forwarded-proto": "https" });
   assert.equal(r.status, 200); const raw = r.headers.get("set-cookie"); assert.match(raw, /HttpOnly/); assert.match(raw, /SameSite=Strict/); assert.match(raw, /Secure/);
   cookie = raw.split(";")[0]; csrf = (await r.json()).csrf; assert.ok(csrf);
-  const session = await (await call("/api/admin/session")).json(); assert.equal(session.authenticated, true); assert.equal(session.csrf, csrf); assert.equal(session.benefitImages, true);
+  const session = await (await call("/api/admin/session")).json(); assert.equal(session.authenticated, true); assert.equal(session.csrf, csrf); assert.equal(session.benefitImages, true); assert.equal(session.ownerRightsImages, true);
 });
 test("publishing requires CSRF and rejects malformed content", async () => {
   const snapshot = await (await call("/api/admin/content")).json();
@@ -161,6 +161,47 @@ test("removing a benefit image preserves its text and legacy text benefits stay 
   assert.equal(published.benefits[2].image, undefined);
   assert.equal(published.benefits[2].body, "第一行\n第二行");
   assert.deepEqual(published.benefits[0], { id: "text-benefit", title: "文字福利", body: "原有文字内容" });
+});
+test("owner rights retain uploaded images and support legacy text, image-only and combined content", async () => {
+  const saved = await (await call("/api/admin/content")).json();
+  const image = saved.catalog.entries[0].image;
+  saved.catalog.ownerRights = [
+    { id: "legacy-right", title: "文字权益", body: "原有文字说明" },
+    { id: "image-right", title: "权益海报", image },
+    { id: "mixed-right", title: "图文权益", body: "第一行\n第二行", image },
+  ];
+  assert.equal((await call("/api/admin/content", "PUT", saved, { "x-csrf-token": csrf })).status, 200);
+  const published = await (await call("/catalog.json")).json();
+  assert.deepEqual(published.ownerRights[0], saved.catalog.ownerRights[0]);
+  assert.equal(published.ownerRights[1].body, "");
+  assert.deepEqual(published.ownerRights[1].image, image);
+  assert.deepEqual(published.ownerRights[2].image, image);
+  assert.deepEqual((await createStore(directory).snapshot()).catalog.ownerRights, published.ownerRights);
+  assert.deepEqual(published.benefits, saved.catalog.benefits);
+});
+test("invalid owner images cannot replace published rights and image removal preserves text", async () => {
+  const saved = await (await call("/api/admin/content")).json();
+  for (const image of [{ ...saved.catalog.ownerRights[1].image, objectKey: "../admin.json" }, { ...saved.catalog.ownerRights[1].image, height: 0 }]) {
+    const invalid = structuredClone(saved); invalid.catalog.ownerRights[1].image = image;
+    assert.equal((await call("/api/admin/content", "PUT", invalid, { "x-csrf-token": csrf })).status, 400);
+  }
+  assert.deepEqual((await (await call("/catalog.json")).json()).ownerRights, saved.catalog.ownerRights);
+  delete saved.catalog.ownerRights[2].image;
+  assert.equal((await call("/api/admin/content", "PUT", saved, { "x-csrf-token": csrf })).status, 200);
+  const right = (await (await call("/catalog.json")).json()).ownerRights[2];
+  assert.equal(right.image, undefined); assert.equal(right.body, "第一行\n第二行");
+});
+test("contact entries accept non-web text and retain image metadata", async () => {
+  const saved = await (await call("/api/admin/content")).json();
+  saved.catalog.contacts = [
+    { id: "contact-text", label: "文字客服", value: "扫码添加客服", url: "微信：测试账号", image: saved.catalog.entries[0].image },
+    { id: "contact-web", label: "网页客服", value: "在线咨询", url: "https://example.com/support" },
+    { id: "contact-app", label: "其他信息", value: "复制使用", url: "weixin://example" },
+  ];
+  assert.equal((await call("/api/admin/content", "PUT", saved, { "x-csrf-token": csrf })).status, 200);
+  const published = await (await call("/catalog.json")).json();
+  assert.deepEqual(published.contacts, saved.catalog.contacts);
+  assert.deepEqual((await createStore(directory).snapshot()).catalog.contacts, saved.catalog.contacts);
 });
 test("upload rejects disguised script images and files above the size limit", async () => {
   for (const [bytes, filename] of [[Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'), "fake.png"], [Buffer.alloc(16 * 1024 * 1024), "large.jpg"]]) {
