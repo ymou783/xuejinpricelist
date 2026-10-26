@@ -35,7 +35,7 @@ export function BannersEditor({ catalog, csrf, onChange, onBusy, onError }: Prop
       </div></div>
       <label className="form-field"><span>轮播图名称</span><input required maxLength={80} value={banner.title} onChange={e => update(banner.id, { title: e.target.value })} /></label>
       <div className="form-field"><span>上传轮播图</span><UploadField csrf={csrf} domain={catalog.cdnDomain} image={banner.image} label={"上传轮播图 " + (position + 1)} onBusy={onBusy} onError={onError} onUploaded={image => update(banner.id, { image: { ...image, alt: banner.image.alt || banner.title || "首页轮播图" } })} /></div>
-      <CdnImageFields image={banner.image} alt={banner.title || "首页轮播图"} required onChange={image => { if (image) update(banner.id, { image }); }} />
+      <CdnImageFields csrf={csrf} image={banner.image} alt={banner.title || "首页轮播图"} required onChange={image => { if (image) update(banner.id, { image }); }} />
       <label className="form-field"><span>图片说明</span><input required maxLength={500} value={banner.image.alt} onChange={e => updateImage(banner.id, { alt: e.target.value })} /></label>
     </article>)}</div>
   </>;

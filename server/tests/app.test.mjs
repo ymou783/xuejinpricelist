@@ -72,7 +72,10 @@ test("poster descriptions publish separately from image alt text and reject inva
   const published = await (await call("/catalog.json")).json();
   assert.equal(published.entries[0].description, "用户可见的海报说明。\n支持第二行。");
   assert.equal(published.entries[0].image.alt, alt);
-  for (const description of ["", "x".repeat(2001), 42]) {
+  const optional = await (await call("/api/admin/content")).json(); optional.catalog.entries[0].description = "";
+  assert.equal((await call("/api/admin/content", "PUT", optional, { "x-csrf-token": csrf })).status, 200);
+  assert.equal((await (await call("/catalog.json")).json()).entries[0].description, "");
+  for (const description of ["x".repeat(2001), 42]) {
     const current = await (await call("/api/admin/content")).json(); current.catalog.entries[0].description = description;
     assert.equal((await call("/api/admin/content", "PUT", current, { "x-csrf-token": csrf })).status, 400);
   }

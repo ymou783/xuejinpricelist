@@ -132,6 +132,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .panel-poster { padding:0 20px 20px; }
 .poster-preview { width:100%; border:0; padding:0; display:block; border-radius:10px; position:relative; background:var(--media); cursor:zoom-in; overflow:hidden; }
 .poster-preview img { display:block; width:100%; height:auto; }
+.price-panel .panel-scroll { display:flex; flex-direction:column; }
+.price-panel .poster-switcher,.price-panel .poster-info { flex-shrink:0; }
+.price-panel .panel-poster { display:flex; align-items:center; justify-content:center; flex:1 0 180px; min-height:180px; min-width:0; overflow:hidden; container-type:size; }
+.price-panel .poster-preview { height:100%; max-height:100%; width:auto; max-width:85%; background:transparent; width:min(85cqw,calc(100cqh * var(--poster-ratio))); height:min(100cqh,calc(85cqw / var(--poster-ratio))); }
+.price-panel .poster-preview img { width:100%; height:100%; object-fit:contain; }
 .poster-zoom { position:absolute; right:12px; top:12px; display:flex; gap:6px; align-items:center; color:#284887; background:#fffffff0; border-radius:7px; font-size:13px; padding:9px 12px; box-shadow:0 2px 12px #15264b16; }
 .image-error { min-height:300px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px 16px; color:var(--muted); text-align:center; gap:12px; }
 .image-error p { margin:0 0 8px; }

@@ -17,7 +17,7 @@ export function contactHref(value?: string): string | undefined {
 function object(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value); }
 function text(value: unknown, max = 200): value is string { return typeof value === "string" && value.trim().length > 0 && value.length <= max; }
 function validId(value: unknown): value is string { return text(value, 80) && /^[a-zA-Z0-9_-]+$/.test(value); }
-function image(value: unknown): value is ImageAsset {
+export function validImage(value: unknown): value is ImageAsset {
   if (!object(value) || !["cdn", "upload"].includes(String(value.source)) || !text(value.objectKey, 600) || !text(value.alt, 500)
     || !Number.isInteger(value.width) || Number(value.width) < 1 || Number(value.width) > 30000
     || !Number.isInteger(value.height) || Number(value.height) < 1 || Number(value.height) > 30000) return false;
@@ -34,30 +34,30 @@ function imageContent(item: unknown) {
   return object(item) && text(item.title, 100)
     && (item.body === undefined || (typeof item.body === "string" && item.body.length <= 15000))
     && (text(item.body, 15000) || item.image !== undefined)
-    && (item.image === undefined || image(item.image));
+    && (item.image === undefined || validImage(item.image));
 }
 export function parseCatalog(value: unknown): Catalog {
   if (!object(value) || !text(value.brand, 30) || !text(value.heading, 40)
     || !text(value.cdnDomain, 253) || !/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i.test(value.cdnDomain)
-    || !Array.isArray(value.entries) || value.entries.length > 200 || !Array.isArray(value.contacts) || value.contacts.length > 20
+    || !Array.isArray(value.entries) || !Array.isArray(value.contacts) || value.contacts.length > 20
     || !Array.isArray(value.benefits) || value.benefits.length > 50) throw new Error("内容格式不正确，请检查标题、图片和必填字段。");
   // Older saved catalogs have neither field; normalize them without discarding existing content.
   const banners = value.banners ?? [];
   const ownerRights = value.ownerRights ?? [];
   if (!Array.isArray(banners) || banners.length > 10
-    || !unique(banners, item => object(item) && text(item.title, 80) && image(item.image))) {
+    || !unique(banners, item => object(item) && text(item.title, 80) && validImage(item.image))) {
     throw new Error("轮播图信息不完整，请填写名称、图片路径、宽高与图片说明，最多添加 10 张。");
   }
   if (!Array.isArray(ownerRights) || ownerRights.length > 50 || !unique(ownerRights, imageContent)) {
     throw new Error("请填写权益标题，并添加正文或图片。");
   }
   if (!unique(value.entries, item => object(item) && text(item.title, 80) && categories.some(c => c.id === item.category)
-    && typeof item.isNew === "boolean" && image(item.image)
-    && (item.description === undefined || text(item.description, 2000)))) throw new Error("海报信息不完整：请填写标题、分类、图片路径、宽高与图片说明。");
+    && typeof item.isNew === "boolean" && validImage(item.image)
+    && (item.description === undefined || (typeof item.description === "string" && item.description.length <= 2000)))) throw new Error("海报信息不完整：请填写标题、分类、有效图片路径与宽高；图片说明可留空，最多 2000 字。");
   if (!unique(value.contacts, item => object(item) && text(item.label, 50) && text(item.value, 300)
     && (item.url === undefined || (text(item.url, 1500) && !/^(?:javascript|data|vbscript):/i.test(item.url.trim())
       && (!/^https?:/i.test(item.url.trim()) || contactHref(item.url) !== undefined)))
-    && (item.image === undefined || image(item.image)))) throw new Error("客服信息不完整，客服链接或说明可填写文字或有效的 http/https 网址。");
+    && (item.image === undefined || validImage(item.image)))) throw new Error("客服信息不完整，客服链接或说明可填写文字或有效的 http/https 网址。");
   if (!unique(value.benefits, imageContent)) throw new Error("请填写福利标题，并添加正文或图片。");
   return {
     brand: value.brand, heading: value.heading, cdnDomain: value.cdnDomain,

@@ -15,7 +15,7 @@ export default function ImageViewer({ poster, domain, onClose }: ImageViewerProp
   const canvas = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const [fitWidth, setFitWidth] = useState(900);
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(0.5);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const width = Math.round(fitWidth * zoom);
@@ -40,11 +40,11 @@ export default function ImageViewer({ poster, domain, onClose }: ImageViewerProp
   }, []);
 
   const changeZoom = (next: number) => {
-    const bounded = Math.min(3, Math.max(1, next));
+    const bounded = Math.min(3, Math.max(0.5, next));
     const body = scroll.current;
     const content = canvas.current;
-    const centerX = body && content ? (body.scrollLeft + body.clientWidth / 2) / content.offsetWidth : 0.5;
-    const centerY = body && content ? (body.scrollTop + body.clientHeight / 2) / content.offsetHeight : 0;
+    const centerX = body && content && content.offsetWidth > body.clientWidth ? (body.scrollLeft + body.clientWidth / 2) / content.offsetWidth : 0.5;
+    const centerY = body && content && content.offsetHeight > body.clientHeight ? (body.scrollTop + body.clientHeight / 2) / content.offsetHeight : 0.5;
     setZoom(bounded);
     requestAnimationFrame(() => {
       if (body && content) {
@@ -91,22 +91,22 @@ export default function ImageViewer({ poster, domain, onClose }: ImageViewerProp
           }}>重新加载大图</button>
         </div> : <div className="viewer-canvas" ref={canvas}>
           <img src={imageUrl(domain, poster, 1200, attempt)}
-            srcSet={responsiveSources(domain, poster, [1200, 1800, 2500], attempt)} sizes={width + "px"}
+            srcSet={responsiveSources(domain, poster, [360, 600, 900, 1200, 1800, 2500], attempt)} sizes={width + "px"}
             width={poster.image.width} height={poster.image.height} style={{ width }}
             alt={poster.image.alt} draggable={false} decoding="async" onError={() => setFailed(true)} />
         </div>}
       </div>
       <footer className="viewer-toolbar" aria-label="图片查看工具">
         <div className="zoom-controls">
-          <button className="icon-button" type="button" aria-label="缩小" onClick={() => changeZoom(zoom - 0.5)} disabled={zoom <= 1}>
+          <button className="icon-button" type="button" aria-label="缩小" onClick={() => changeZoom(zoom - 0.5)} disabled={zoom <= 0.5}>
             <Minus size={21} aria-hidden="true" />
           </button>
           <output className="zoom-value" aria-live="polite" aria-label="缩放比例">{Math.round(zoom * 100)}%</output>
           <button className="icon-button" type="button" aria-label="放大" onClick={() => changeZoom(zoom + 0.5)} disabled={zoom >= 3}>
             <Plus size={21} aria-hidden="true" />
           </button>
-          <button className="icon-button" type="button" aria-label="适应宽度" title="适应宽度" onClick={() => {
-            setZoom(1);
+          <button className="icon-button" type="button" aria-label="恢复默认缩放" title="恢复默认缩放（50%）" onClick={() => {
+            setZoom(0.5);
             if (scroll.current) { scroll.current.scrollLeft = 0; scroll.current.scrollTop = 0; }
           }}><RotateCcw size={20} aria-hidden="true" /></button>
         </div>

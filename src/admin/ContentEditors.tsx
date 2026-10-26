@@ -21,7 +21,7 @@ export function ContactEditor({ catalog, csrf, onChange, onBusy, onError }: { ca
       <label className="form-field"><span>客服链接或说明（选填）</span><input maxLength={1500} value={c.url || ""} placeholder="网址、微信号、QQ号或其他说明" onChange={e => update(c.id, { url: e.target.value || undefined })} /></label>
       <p className="field-help">网址可点击跳转，其他文字会展示并提供复制。</p>
       <div className="form-field"><span>二维码（可选）</span><UploadField csrf={csrf} image={c.image} domain={catalog.cdnDomain} kind="qr" onBusy={onBusy} onError={onError} onUploaded={asset => update(c.id, { image: { ...asset, alt: (c.label || "客服") + "二维码" } })} /></div>
-      <CdnImageFields image={c.image} alt={(c.label || "客服") + "二维码"} onChange={image => update(c.id, { image })} />
+      <CdnImageFields csrf={csrf} image={c.image} alt={(c.label || "客服") + "二维码"} onChange={image => update(c.id, { image })} />
       {c.image ? <button type="button" className="text-danger" onClick={() => update(c.id, { image: undefined })}>移除二维码</button> : null}
     </article>)}</div>
   </>;
@@ -41,7 +41,7 @@ export function BenefitsEditor({ catalog, csrf, imageEnabled, onChange, onBusy, 
       <label className="form-field"><span>{label}标题</span><input required maxLength={100} value={b.title} onChange={e => update(b.id, { title: e.target.value })} /></label>
       <label className="form-field"><span>{label}正文</span><textarea required={!b.image} maxLength={15000} rows={6} value={b.body} placeholder={"填写" + label + "详情；已上传图片时可留空，支持换行。"} onChange={e => update(b.id, { body: e.target.value })} /></label>
       <div className="form-field"><span>{label}图片</span><UploadField csrf={csrf} image={b.image} domain={catalog.cdnDomain} label={"上传" + label + "图片 " + (index + 1)} disabled={!imageEnabled} onBusy={onBusy} onError={onError} onUploaded={asset => update(b.id, { image: { ...asset, alt: b.title || label + "海报" } })} /></div>
-      <CdnImageFields image={b.image} alt={b.title || label + "海报"} disabled={!imageEnabled} onChange={image => update(b.id, { image })} />
+      <CdnImageFields csrf={csrf} image={b.image} alt={b.title || label + "海报"} disabled={!imageEnabled} onChange={image => update(b.id, { image })} />
       <p className="field-help">{imageEnabled ? "支持文字、图片或图文组合。上传后点击「保存发布」，前台可点击图片放大。" : "当前后台服务尚未启用" + label + "图片。请更新并重启 Node 服务，再刷新后台；文字内容可继续编辑。"}</p>
       {b.image ? <button type="button" className="text-danger" onClick={() => update(b.id, { image: undefined })}>移除{label}图片</button> : null}
     </article>)}</div>

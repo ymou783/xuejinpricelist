@@ -6,10 +6,11 @@ import { mkdir, rm } from "node:fs/promises";
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { createStore, root } from "./store.mjs";
 import { passwordRecord, verifyPassword } from "./auth.mjs";
+import { cdnImageInfo } from "./cdn-info.mjs";
 const ttl = 8 * 60 * 60 * 1000;
 const cookieName = "xuejin_admin";
 function secureEqual(a, b) { if (typeof a !== "string" || typeof b !== "string") return false; const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); }
-export async function createApp({ directory, trustProxy = false } = {}) {
+export async function createApp({ directory, trustProxy = false, imageInfo = cdnImageInfo } = {}) {
   if (!directory) throw new Error("Data directory required");
   await mkdir(path.join(directory, "uploads"), { recursive: true });
   const store = createStore(directory); await store.snapshot();
@@ -45,7 +46,7 @@ export async function createApp({ directory, trustProxy = false } = {}) {
   const cookieOptions = req => ({ httpOnly: true, secure: req.secure, sameSite: "strict", path: "/", maxAge: ttl });
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
   app.get("/catalog.json", async (_req, res) => res.json((await store.snapshot()).catalog));
-  app.get("/api/admin/session", (req, res) => { const s = session(req); res.json({ configured: !!record, authenticated: !!s, benefitImages: true, ownerRightsImages: true, ...(s ? { csrf: s.csrf } : {}) }); });
+  app.get("/api/admin/session", (req, res) => { const s = session(req); res.json({ configured: !!record, authenticated: !!s, posterLibrary: true, benefitImages: true, ownerRightsImages: true, ...(s ? { csrf: s.csrf } : {}) }); });
   app.post("/api/admin/login", sameOrigin, async (req, res) => {
     if (!record) return res.status(503).json({ error: "尚未设置管理密码，请先在服务器运行 npm run admin:password，再重启服务。" });
     const key = req.ip; const now = Date.now(); const previous = attempts.get(key);
@@ -57,12 +58,28 @@ export async function createApp({ directory, trustProxy = false } = {}) {
     }
     attempts.delete(key); const old = session(req); if (old) sessions.delete(old.token);
     const token = randomBytes(32).toString("hex"); const entry = { csrf: randomBytes(32).toString("hex"), expires: now + ttl };
-    sessions.set(token, entry); res.cookie(cookieName, token, cookieOptions(req)); res.json({ csrf: entry.csrf, benefitImages: true, ownerRightsImages: true });
+    sessions.set(token, entry); res.cookie(cookieName, token, cookieOptions(req)); res.json({ csrf: entry.csrf, posterLibrary: true, benefitImages: true, ownerRightsImages: true });
   });
   app.use("/api/admin", authenticate);
-  app.get("/api/admin/content", async (_req, res) => res.json(await store.snapshot()));
+  app.get("/api/admin/content", async (req, res) => res.json(await store.snapshot(req.query.excludePosters === "1")));
   app.post("/api/admin/logout", sameOrigin, csrf, (req, res) => { sessions.delete(req.adminSession.token); res.clearCookie(cookieName, { ...cookieOptions(req), maxAge: undefined }); res.json({ ok: true }); });
   app.put("/api/admin/content", sameOrigin, csrf, async (req, res) => res.json(await store.save(req.body?.catalog, req.body?.revision)));
+  app.put("/api/admin/content/sections/:section", sameOrigin, csrf, async (req, res) => res.json(await store.saveSection(req.params.section, req.body?.value, req.body?.revision)));
+  app.get("/api/admin/posters", async (req, res) => res.json(await store.listPosters(req.query)));
+  app.post("/api/admin/posters", sameOrigin, csrf, async (req, res) => res.status(201).json(await store.createPoster(req.body?.draft, req.body?.id)));
+  app.post("/api/admin/posters/import", sameOrigin, csrf, async (req, res) => res.json(await store.importPosters(req.body?.items)));
+  app.post("/api/admin/posters/batch", sameOrigin, csrf, async (req, res) => res.json(await store.batchPosters(req.body?.items, req.body?.action, req.body?.value)));
+  let resolving = 0;
+  app.post("/api/admin/posters/image-info", sameOrigin, csrf, async (req, res) => {
+    if (resolving >= 3) return res.status(429).json({ error: "正在读取图片尺寸，请稍后重试。" });
+    resolving++;
+    try { const { catalog } = await store.snapshot(true); res.json(await imageInfo(catalog.cdnDomain, req.body?.objectKey)); }
+    finally { resolving--; }
+  });
+  app.get("/api/admin/posters/:id", async (req, res) => res.json(await store.getPoster(req.params.id)));
+  app.put("/api/admin/posters/:id", sameOrigin, csrf, async (req, res) => res.json(await store.updatePoster(req.params.id, req.body?.draft, req.body?.version, req.body?.action)));
+  app.post("/api/admin/posters/:id/copy", sameOrigin, csrf, async (req, res) => res.status(201).json(await store.copyPoster(req.params.id, req.body?.version)));
+  app.post("/api/admin/posters/:id/move", sameOrigin, csrf, async (req, res) => res.json(await store.movePoster(req.params.id, req.body?.position, req.body?.revision)));
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024, files: 1, fields: 1 } });
   let processing = 0;
   app.post("/api/admin/upload", sameOrigin, csrf, (req, res, next) => {
