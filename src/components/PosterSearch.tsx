@@ -1,19 +1,16 @@
 import { useRef, useState } from "react";
 import { ChevronRight, Search, X } from "lucide-react";
 import { categories, type Catalog, type Poster } from "../catalog";
+import { matchesTitle, titleTerms } from "../posterDirectory";
 
 interface Props { data: Catalog | null; status: string; onRetry: () => void; onSelect: (poster: Poster) => void }
-function normalize(value: string) { return value.normalize("NFKC").toLocaleLowerCase().trim(); }
 
 export function PosterSearch({ data, status, onRetry, onSelect }: Props) {
   const [query, setQuery] = useState("");
   const input = useRef<HTMLInputElement>(null);
-  const terms = normalize(query).split(/\s+/).filter(Boolean);
+  const terms = titleTerms(query);
   const searching = terms.length > 0;
-  const matches = searching ? data?.entries.filter(poster => {
-    const title = normalize(poster.title);
-    return terms.every(term => title.includes(term));
-  }) ?? [] : [];
+  const matches = searching ? data?.entries.filter(poster => matchesTitle(poster.title, terms)) ?? [] : [];
   const message = status === "loading" ? "正在加载价目表…" : status === "error" ? "价目表暂时无法加载，请重试。" : matches.length ? `找到 ${matches.length} 张价目表` : "没有找到相关价目表，试试其他标题关键词。";
 
   return <section className="poster-search">
@@ -29,7 +26,7 @@ export function PosterSearch({ data, status, onRetry, onSelect }: Props) {
       <p id="poster-search-status" className="poster-search-status" role="status" aria-atomic="true">{message}</p>
       {status === "error" ? <button type="button" className="button button-secondary" onClick={onRetry}>重新加载价目表</button> : null}
       {status === "ready" && matches.length ? <ul>{matches.map(poster => <li key={poster.id}>
-        <a className="poster-search-result" href={`#${poster.category}?item=${poster.id}`} onClick={event => { if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return; event.preventDefault(); onSelect(poster); }}>
+        <a className="poster-search-result" href={`#${poster.category}/${poster.id}`} onClick={event => { if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return; event.preventDefault(); onSelect(poster); }}>
           <span><strong>{poster.title}</strong><span>{categories.find(category => category.id === poster.category)?.title}</span></span>
           <ChevronRight aria-hidden="true" />
         </a>

@@ -1,15 +1,16 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { AlertCircle, ExternalLink, Minus, Plus, RotateCcw, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, ExternalLink, Minus, Plus, RotateCcw, X } from "lucide-react";
 import type { ImageAsset } from "../catalog";
 import { imageUrl, originalUrl, responsiveSources } from "../cdn";
 
 interface ImageViewerProps {
-  poster: { title: string; image: ImageAsset };
+  poster: { title: string; image: ImageAsset; description?: string };
   domain: string;
   onClose: () => void;
+  sequence?: { position: number; total: number; onPrevious?: () => void; onNext?: () => void };
 }
 
-export default function ImageViewer({ poster, domain, onClose }: ImageViewerProps) {
+export default function ImageViewer({ poster, domain, onClose, sequence }: ImageViewerProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const scroll = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLDivElement>(null);
@@ -56,11 +57,23 @@ export default function ImageViewer({ poster, domain, onClose }: ImageViewerProp
 
   return (
     <dialog ref={dialog} className="image-viewer" aria-labelledby="viewer-title"
+      onKeyDown={event => {
+        if (!sequence || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+        if (event.target instanceof Element && event.target.closest("input,textarea,select,[contenteditable=true],summary,details[open]")) return;
+        if (event.key === "ArrowLeft") { event.preventDefault(); sequence.onPrevious?.(); }
+        if (event.key === "ArrowRight") { event.preventDefault(); sequence.onNext?.(); }
+      }}
       onCancel={(event) => { event.preventDefault(); onClose(); }}>
       <header className="viewer-header">
         <div><h2 id="viewer-title">{poster.title}</h2><p>放大后可拖动或滚动查看图片细节</p></div>
         <button type="button" className="icon-button viewer-close" aria-label="关闭大图" onClick={onClose}><X aria-hidden="true" size={24} /></button>
       </header>
+      {sequence ? <nav className="viewer-sequence" aria-label="切换海报">
+        <button type="button" className="button button-secondary" aria-label="上一张海报" title="上一张海报（←）" disabled={!sequence.onPrevious} onClick={sequence.onPrevious}><ArrowLeft size={18} aria-hidden="true" />上一张</button>
+        <span role="status" aria-atomic="true">第 <strong>{sequence.position}</strong> 张，共 {sequence.total} 张</span>
+        <button type="button" className="button button-secondary" aria-label="下一张海报" title="下一张海报（→）" disabled={!sequence.onNext} onClick={sequence.onNext}>下一张<ArrowRight size={18} aria-hidden="true" /></button>
+      </nav> : null}
+      {poster.description?.trim() ? <details className="viewer-description"><summary>图片说明</summary><p>{poster.description}</p></details> : null}
       <div className="viewer-scroll" ref={scroll} tabIndex={0} aria-label="图片，可滚动查看"
         onPointerDown={(event) => {
           if (event.pointerType !== "mouse" || event.button !== 0) return;
