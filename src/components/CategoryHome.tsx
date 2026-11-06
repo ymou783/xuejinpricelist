@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ChevronRight, Compass, Dice5, Gem, Gift, Headphones, MessageCircle } from "lucide-react";
+import { ChevronRight, Compass, Dice5, Gem, Gift, Headphones, MessageCircle, Shield } from "lucide-react";
 import { categories, type Banner, type Benefit, type SectionId } from "../catalog";
 import { HomeCarousel } from "./HomeCarousel";
 import { OwnerRights } from "./OwnerRights";
@@ -20,6 +20,7 @@ export function CategoryHome({ heading, banners, ownerRights, domain, search, on
           <span className="entry-icon"><Icon aria-hidden="true" /></span><span className="category-label"><strong>{category.title}</strong><ChevronRight className="entry-chevron" aria-hidden="true" /></span>
         </a>;
       })}</div>
+      <a href="#warriors" className="warrior-entry entry" onClick={e=>{if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();onOpen("warriors");}}><span className="entry-icon"><Shield aria-hidden="true"/></span><span className="entry-copy"><strong>武将介绍</strong><span>认识武将，找到适合你的玩法。</span></span><ChevronRight className="entry-chevron" aria-hidden="true"/></a>
       <div className="utility-grid">
         <a href="#contact" className="utility-entry entry" onClick={e => { e.preventDefault(); onOpen("contact"); }}><span className="entry-icon"><MessageCircle aria-hidden="true" /></span><span className="entry-copy"><strong>联系客服</strong><span>咨询与下单</span></span><ChevronRight className="entry-chevron" aria-hidden="true" /></a>
         <a href="#benefits" className="utility-entry entry" onClick={e => { e.preventDefault(); onOpen("benefits"); }}><span className="entry-icon"><Gift aria-hidden="true" /></span><span className="entry-copy"><strong>预存福利</strong><span>查看福利详情</span></span><ChevronRight className="entry-chevron" aria-hidden="true" /></a>

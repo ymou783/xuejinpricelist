@@ -3,13 +3,16 @@ export const categories = [
   { id: "special", title: "特色趣味单" }, { id: "companion", title: "陪玩单" },
 ] as const;
 export type CategoryId = typeof categories[number]["id"];
-export type SectionId = CategoryId | "latest" | "contact" | "benefits" | "rights";
+export type SectionId = CategoryId | "latest" | "contact" | "benefits" | "rights" | "warriors";
 export interface ImageAsset { source: "cdn" | "upload"; objectKey: string; width: number; height: number; alt: string }
 export interface Poster { id: string; title: string; description: string; category: CategoryId; isNew: boolean; image: ImageAsset }
 export interface Banner { id: string; title: string; image: ImageAsset }
 export interface Contact { id: string; label: string; value: string; url?: string; image?: ImageAsset }
 export interface Benefit { id: string; title: string; body: string; image?: ImageAsset }
-export interface Catalog { brand: string; heading: string; cdnDomain: string; entries: Poster[]; contacts: Contact[]; benefits: Benefit[]; banners: Banner[]; ownerRights: Benefit[] }
+export interface WarriorPhoto { id: string; title: string; image?: ImageAsset }
+export interface Warrior { id: string; name: string; summary: string; bio: string; maps: string; style: string; notes: string; tags: string[]; recommended: boolean; avatar?: ImageAsset; images: WarriorPhoto[]; posterIds: string[] }
+export interface Catalog { brand: string; heading: string; cdnDomain: string; entries: Poster[]; contacts: Contact[]; benefits: Benefit[]; banners: Banner[]; ownerRights: Benefit[]; warriors: Warrior[] }
+export const warriorTextLimits = { name: 50, summary: 200, bio: 6000, maps: 500, style: 2000, notes: 3000 } as const;
 export function contactHref(value?: string): string | undefined {
   if (!value) return;
   try { const url = new URL(value.trim()); if (["http:", "https:"].includes(url.protocol) && !url.username && !url.password) return url.href; } catch { /* Plain contact text is displayed without linking. */ }
@@ -36,6 +39,20 @@ function imageContent(item: unknown) {
     && (text(item.body, 15000) || item.image !== undefined)
     && (item.image === undefined || validImage(item.image));
 }
+export function validWarrior(value: unknown): boolean {
+  return object(value) && text(value.name, 50)
+    && Object.entries(warriorTextLimits).every(([key, max]) => value[key] === undefined || (typeof value[key] === "string" && value[key].length <= max))
+    && (value.recommended === undefined || typeof value.recommended === "boolean")
+    && (value.avatar === undefined || validImage(value.avatar))
+    && (value.tags === undefined || (Array.isArray(value.tags) && value.tags.length <= 8 && value.tags.every(t => text(t, 20)) && new Set(value.tags).size === value.tags.length))
+    && (value.images === undefined || (Array.isArray(value.images) && unique(value.images, p => object(p) && typeof p.title === "string" && p.title.length <= 80 && validImage(p.image))))
+    && (value.posterIds === undefined || (Array.isArray(value.posterIds) && value.posterIds.every(validId) && new Set(value.posterIds).size === value.posterIds.length));
+}
+export function cleanWarrior(w: Warrior): Warrior {
+  return { id: w.id, name: w.name, summary: w.summary ?? "", bio: w.bio ?? "", maps: w.maps ?? "", style: w.style ?? "", notes: w.notes ?? "",
+    tags: w.tags ?? [], recommended: w.recommended ?? false, ...(w.avatar ? { avatar: cleanImage(w.avatar) } : {}),
+    images: (w.images ?? []).map(p => ({ id: p.id, title: p.title, ...(p.image ? { image: cleanImage(p.image) } : {}) })), posterIds: w.posterIds ?? [] };
+}
 export function parseCatalog(value: unknown): Catalog {
   if (!object(value) || !text(value.brand, 30) || !text(value.heading, 40)
     || !text(value.cdnDomain, 253) || !/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i.test(value.cdnDomain)
@@ -44,6 +61,8 @@ export function parseCatalog(value: unknown): Catalog {
   // Older saved catalogs have neither field; normalize them without discarding existing content.
   const banners = value.banners ?? [];
   const ownerRights = value.ownerRights ?? [];
+  const warriors = value.warriors ?? [];
+  if (!Array.isArray(warriors) || !unique(warriors, validWarrior)) throw new Error("武将资料不完整，请检查昵称、标签和图片尺寸。");
   if (!Array.isArray(banners) || banners.length > 10
     || !unique(banners, item => object(item) && text(item.title, 80) && validImage(item.image))) {
     throw new Error("轮播图信息不完整，请填写名称、图片路径、宽高与图片说明，最多添加 10 张。");
@@ -66,6 +85,7 @@ export function parseCatalog(value: unknown): Catalog {
     benefits: value.benefits.map((raw: unknown) => { const b = raw as Benefit; return { id: b.id, title: b.title, body: b.body ?? "", ...(b.image ? { image: cleanImage(b.image) } : {}) }; }),
     banners: banners.map((raw: unknown) => { const b = raw as Banner; return { id: b.id, title: b.title, image: cleanImage(b.image) }; }),
     ownerRights: ownerRights.map((raw: unknown) => { const b = raw as Benefit; return { id: b.id, title: b.title, body: b.body ?? "", ...(b.image ? { image: cleanImage(b.image) } : {}) }; }),
+    warriors: warriors.map(w => cleanWarrior(w as Warrior)),
   };
 }
 function cleanImage(i: ImageAsset): ImageAsset { return { source: i.source, objectKey: i.objectKey, width: i.width, height: i.height, alt: i.alt }; }

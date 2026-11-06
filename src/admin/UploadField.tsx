@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Image as ImageIcon, LoaderCircle } from "lucide-react";
 import type { ImageAsset } from "../catalog";
 import { imageUrl } from "../cdn";
-import { request } from "./api";
-interface Props { csrf: string; image?: ImageAsset; domain: string; kind?: "qr"; label?: string; disabled?: boolean; onUploaded: (image: ImageAsset) => void; onBusy: (busy: boolean) => void; onError: (error: unknown) => void }
-export function UploadField({ csrf, image, domain, kind, label, disabled = false, onUploaded, onBusy, onError }: Props) {
+import { request, warriorRequest } from "./api";
+interface Props { csrf: string; image?: ImageAsset; domain: string; kind?: "qr"; label?: string; disabled?: boolean; self?: boolean; onUploaded: (image: ImageAsset) => void; onBusy: (busy: boolean) => void; onError: (error: unknown) => void }
+export function UploadField({ csrf, image, domain, kind, label, disabled = false, self = false, onUploaded, onBusy, onError }: Props) {
   const [busy, setBusy] = useState(false);
   const upload = async (file: File | undefined) => {
     if (!file) return;
@@ -12,7 +12,7 @@ export function UploadField({ csrf, image, domain, kind, label, disabled = false
     setBusy(true); onBusy(true);
     try {
       const form = new FormData(); form.append("image", file); if (kind) form.append("kind", kind);
-      const asset = await request<ImageAsset>("upload", { method: "POST", body: form }, csrf); onUploaded(asset);
+      const asset = await (self ? warriorRequest : request)<ImageAsset>("upload", { method: "POST", body: form }, csrf); onUploaded(asset);
     } catch (error) { onError(error); } finally { setBusy(false); onBusy(false); }
   };
   return <label className={"upload-field" + (busy ? " is-busy" : "")}>

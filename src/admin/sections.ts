@@ -2,7 +2,7 @@ import type { Catalog } from "../catalog";
 
 export const sectionFields = {
   home: ["brand", "heading", "cdnDomain"], banners: ["banners"], posters: ["entries"],
-  contact: ["contacts"], benefits: ["benefits"], rights: ["ownerRights"],
+  contact: ["contacts"], benefits: ["benefits"], rights: ["ownerRights"], warriors: [],
 } as const;
 export type AdminSection = keyof typeof sectionFields;
 export function sectionDirty(section: AdminSection, draft: Catalog, saved: Catalog) {

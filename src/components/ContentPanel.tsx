@@ -5,7 +5,7 @@ import { ImagePreview } from "./ImagePreview";
 import { copyText } from "../clipboard";
 import { isPosterSection, type DirectoryState, type PosterDirectoryModel } from "../posterDirectory";
 import { PosterDirectory } from "./PosterDirectory";
-interface Props { section: Exclude<SectionId, "rights">; directory: PosterDirectoryModel | null; directoryState: DirectoryState; viewerOpen: boolean; data: Catalog | null; status: string; onRetry: () => void; onClose: () => void; onOpen: (id: string, page?: number) => void; onDirectoryChange: (state: Partial<DirectoryState>) => void }
+interface Props { section: Exclude<SectionId, "rights" | "warriors">; directory: PosterDirectoryModel | null; directoryState: DirectoryState; viewerOpen: boolean; data: Catalog | null; status: string; onRetry: () => void; onClose: () => void; onOpen: (id: string, page?: number) => void; onDirectoryChange: (state: Partial<DirectoryState>) => void }
 const titles = { latest: "趣味单上新", contact: "联系客服", benefits: "预存福利" };
 function Empty({ section, onClose }: { section: SectionId; onClose: () => void }) {
   const Icon = section === "contact" ? MessageCircle : section === "benefits" ? Gift : ImageIcon;

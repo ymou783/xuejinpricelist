@@ -5,6 +5,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseCatalog } from "../src/catalog.ts";
 import { checkVersion, digest, libraryRevision, listPosters, managed, posterDraft, problem, publicEntries, publishable, reorder, touch, validId } from "./posters.mjs";
+import { warriorOperations } from "./warriors.mjs";
+import { warriorAccounts } from "./warrior-accounts.mjs";
 export const root = fileURLToPath(new URL("../", import.meta.url));
 export function dataDirectory() { return path.resolve(process.env.DATA_DIR || path.join(root, "data")); }
 export async function atomicWrite(filename, value) {
@@ -15,10 +17,10 @@ export async function atomicWrite(filename, value) {
 }
 const fields = { home: ["brand", "heading", "cdnDomain"], banners: ["banners"], contact: ["contacts"], benefits: ["benefits"], rights: ["ownerRights"] };
 function snapshotOf(doc, excludePosters = false) {
-  return { catalog: excludePosters ? { ...doc.catalog, entries: [] } : doc.catalog, revision: digest(doc.catalog),
+  return { catalog: excludePosters ? { ...doc.catalog, entries: [], warriors: [] } : doc.catalog, revision: digest(doc.catalog),
     sectionRevisions: Object.fromEntries(Object.entries(fields).map(([section, keys]) => [section, digest(keys.map(key => doc.catalog[key]))])) };
 }
-export function createStore(directory) {
+export function createStore(directory, releaseWarrior = async draft => draft, ownsWarriorAssets = async () => {}) {
   const filename = path.join(directory, "catalog.json");
   let pending = Promise.resolve();
   const read = async () => {
@@ -39,18 +41,30 @@ export function createStore(directory) {
     const records = legacy ? catalog.entries.map(managed) : saved._posterLibrary;
     if (!Array.isArray(records) || records.some(r => !r?.draft || !validId(r.draft.id) || !["draft", "published", "offline"].includes(r.status) || typeof r.version !== "string")
       || new Set(records.map(r => r.draft.id)).size !== records.length) throw problem("海报库数据损坏，请从备份恢复。", 500);
-    return { catalog, records, legacy };
+    const warriorLegacy = !Object.hasOwn(saved, "_warriorLibrary");
+    const warriorRecords = warriorLegacy ? catalog.warriors.map(managed) : saved._warriorLibrary;
+    if (!Array.isArray(warriorRecords) || warriorRecords.some(r => !r?.draft || !validId(r.draft.id) || !["draft", "published", "offline"].includes(r.status) || typeof r.version !== "string")
+      || new Set(warriorRecords.map(r => r.draft.id)).size !== warriorRecords.length) throw problem("武将资料损坏，请从备份恢复。", 500);
+    const accounts=saved._warriorAccounts??[], invites=saved._warriorInvites??[];
+    if(!Array.isArray(accounts)||!Array.isArray(invites))throw problem("武将账号数据损坏，请从备份恢复。",500);
+    return { catalog, records, legacy, warriorRecords, warriorLegacy, accounts, invites };
   };
   const edit = work => {
     const job = pending.then(async () => {
       const doc = await read(); const result = await work(doc);
       doc.catalog.entries = publicEntries(doc.records);
+      doc.catalog.warriors = publicEntries(doc.warriorRecords);
+      if (doc.warriorLegacy) {
+        const backup = filename + ".before-warrior-library.bak";
+        try { await copyFile(filename, backup, constants.COPYFILE_EXCL); await chmod(backup, 0o600); }
+        catch (e) { if (e.code !== "EEXIST") throw e; }
+      }
       if (doc.legacy) {
         const backup = filename + ".before-poster-library.bak";
         try { await copyFile(filename, backup, constants.COPYFILE_EXCL); await chmod(backup, 0o600); }
         catch (e) { if (e.code !== "EEXIST") throw e; }
       }
-      await atomicWrite(filename, { ...doc.catalog, _posterLibrary: doc.records });
+      await atomicWrite(filename, { ...doc.catalog, _posterLibrary: doc.records, _warriorLibrary: doc.warriorRecords, _warriorAccounts:doc.accounts, _warriorInvites:doc.invites });
       return typeof result === "function" ? result(doc) : result;
     });
     pending = job.catch(() => {}); return job;
@@ -59,7 +73,7 @@ export function createStore(directory) {
   const requireRevision = (doc, revision) => { if (digest(doc.catalog) !== revision) throw problem("内容已在其他窗口修改，请重新加载后编辑。", 409); };
   const save = (value, revision) => edit(doc => {
     requireRevision(doc, revision);
-    let catalog; try { catalog = parseCatalog(value); } catch (error) { throw problem(error.message); }
+    let catalog; try { catalog = parseCatalog({ ...value, warriors: doc.catalog.warriors }); } catch (error) { throw problem(error.message); }
     // Old clients still work without discarding private drafts or offline items.
     const old = new Map(doc.records.map(r => [r.draft.id, r]));
     const active = catalog.entries.map(p => {
@@ -140,7 +154,7 @@ export function createStore(directory) {
     if (revision !== libraryRevision(doc.records)) throw problem("排序已发生变化，请刷新列表再移动。", 409);
     doc.records = reorder(doc.records, id, position); return { ok: true };
   });
-  return { snapshot, save, saveSection, createPoster, importPosters, updatePoster, copyPoster, batchPosters, movePoster,
+  return { ...warriorAccounts(read,edit), ...warriorOperations(read, edit, releaseWarrior, ownsWarriorAssets), snapshot, save, saveSection, createPoster, importPosters, updatePoster, copyPoster, batchPosters, movePoster,
     listPosters: async query => listPosters((await read()).records, query),
     getPoster: async id => { const record = (await read()).records.find(r => r.draft.id === id); if (!record) throw problem("海报已删除，请刷新列表。", 404); return { record }; },
   };

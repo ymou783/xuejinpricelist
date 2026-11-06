@@ -5,7 +5,7 @@ export interface DirectoryState { query: string; newOnly: boolean; page: number;
 export const POSTERS_PER_PAGE = 6;
 
 export function isPosterSection(section: SectionId | null): section is PosterSection {
-  return section !== null && section !== "contact" && section !== "benefits" && section !== "rights";
+  return section === "latest" || section === "basic" || section === "fun" || section === "special" || section === "companion";
 }
 
 function normalize(value: string) { return value.normalize("NFKC").toLocaleLowerCase().trim(); }

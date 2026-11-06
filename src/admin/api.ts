@@ -1,9 +1,15 @@
 export class ApiError extends Error { status: number; constructor(message: string, status: number) { super(message); this.status = status; } }
 export async function request<T>(path: string, options: RequestInit = {}, csrf?: string): Promise<T> {
+  return apiRequest<T>("/api/admin/",path,options,csrf);
+}
+export async function warriorRequest<T>(path: string, options: RequestInit = {}, csrf?: string): Promise<T> {
+  return apiRequest<T>("/api/warrior/",path,options,csrf);
+}
+async function apiRequest<T>(prefix: string, path: string, options: RequestInit, csrf?: string): Promise<T> {
   const headers = new Headers(options.headers);
   if (options.body && !(options.body instanceof FormData)) headers.set("Content-Type", "application/json");
   if (csrf) headers.set("X-CSRF-Token", csrf);
-  const response = await fetch("/api/admin/" + path, { ...options, headers, credentials: "same-origin", cache: "no-store" });
+  const response = await fetch(prefix + path, { ...options, headers, credentials: "same-origin", cache: "no-store" });
   if (!response.headers.get("Content-Type")?.includes("application/json")) {
     throw new ApiError("后台接口未返回有效数据，请检查 Node 服务和反向代理配置后重试。", response.status);
   }

@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Crown, ExternalLink, Gift, Home, Image as ImageIcon, Images, LockKeyhole, LogOut, MessageCircle, Save } from "lucide-react";
+import { Crown, ExternalLink, Gift, Home, Image as ImageIcon, Images, LockKeyhole, LogOut, MessageCircle, Save, Shield } from "lucide-react";
 import { parseCatalog, type Catalog } from "../catalog";
 import wordmark from "../assets/wordmark.webp";
 import { ApiError, request } from "./api";
 import { PosterLibrary } from "./PosterLibrary";
+import { WarriorManagement } from "./WarriorManagement";
 import { BenefitsEditor, ContactEditor, HomeEditor } from "./ContentEditors";
 import { BannersEditor } from "./BannersEditor";
 import { mergeSection, sectionDirty, type AdminSection } from "./sections";
 import "./admin.css";
 interface Snapshot { catalog: Catalog; revision: string; sectionRevisions?: Partial<Record<AdminSection, string>> }
-const tabs = [{ id: "home", title: "首页设置", Icon: Home }, { id: "banners", title: "首页轮播图", Icon: Images }, { id: "posters", title: "价目海报", Icon: ImageIcon }, { id: "contact", title: "联系客服", Icon: MessageCircle }, { id: "benefits", title: "预存福利", Icon: Gift }, { id: "rights", title: "老板权益", Icon: Crown }] as const;
+const tabs = [{ id: "warriors", title: "武将管理", Icon: Shield }, { id: "home", title: "首页设置", Icon: Home }, { id: "banners", title: "首页轮播图", Icon: Images }, { id: "posters", title: "价目海报", Icon: ImageIcon }, { id: "contact", title: "联系客服", Icon: MessageCircle }, { id: "benefits", title: "预存福利", Icon: Gift }, { id: "rights", title: "老板权益", Icon: Crown }] as const;
 export default function AdminApp() {
   const [checking, setChecking] = useState(true); const [configured, setConfigured] = useState(true);
   const [csrf, setCsrf] = useState(""); const [password, setPassword] = useState("");
@@ -17,6 +18,7 @@ export default function AdminApp() {
   const [rightsImages, setRightsImages] = useState(false);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null); const [draft, setDraft] = useState<Catalog | null>(null);
   const [tab, setTab] = useState<AdminSection>("posters");
+  const [warriorLibrary,setWarriorLibrary]=useState(false);
   const [posterLibrary, setPosterLibrary] = useState(false); const [posterDirty, setPosterDirty] = useState(false);
   const [busy, setBusy] = useState(false); const [uploading, setUploading] = useState(0);
   const [error, setError] = useState(""); const [notice, setNotice] = useState("");
@@ -36,8 +38,8 @@ export default function AdminApp() {
     document.title = "内容管理｜雪烬电竞";
     const controller = new AbortController();
     void (async () => {
-      try { const session = await request<{ configured: boolean; authenticated: boolean; csrf?: string; benefitImages?: boolean; ownerRightsImages?: boolean; posterLibrary?: boolean }>("session", { signal: controller.signal });
-        setConfigured(session.configured); setCsrf(session.csrf || ""); setBenefitImages(session.benefitImages === true); setRightsImages(session.ownerRightsImages === true); setPosterLibrary(session.posterLibrary === true); if (session.authenticated) await loadContent(controller.signal);
+      try { const session = await request<{ configured: boolean; authenticated: boolean; csrf?: string; benefitImages?: boolean; ownerRightsImages?: boolean; posterLibrary?: boolean; warriorLibrary?: boolean }>("session", { signal: controller.signal });
+        setConfigured(session.configured); setCsrf(session.csrf || ""); setBenefitImages(session.benefitImages === true); setRightsImages(session.ownerRightsImages === true); setPosterLibrary(session.posterLibrary === true);setWarriorLibrary(session.warriorLibrary===true); if (session.authenticated) await loadContent(controller.signal);
       } catch (e) { if (!controller.signal.aborted) onError(e); } finally { if (!controller.signal.aborted) setChecking(false); }
     })(); return () => controller.abort();
   }, [onError]);
@@ -48,7 +50,7 @@ export default function AdminApp() {
   }, [dirty, uploading]);
   const login = async (event: FormEvent) => {
     event.preventDefault(); setBusy(true); setError("");
-    try { const response = await request<{ csrf: string; benefitImages?: boolean; ownerRightsImages?: boolean; posterLibrary?: boolean }>("login", { method: "POST", body: JSON.stringify({ password }) }); setCsrf(response.csrf); setBenefitImages(response.benefitImages === true); setRightsImages(response.ownerRightsImages === true); setPosterLibrary(response.posterLibrary === true); setPassword(""); await loadContent(); }
+    try { const response = await request<{ csrf: string; benefitImages?: boolean; ownerRightsImages?: boolean; posterLibrary?: boolean; warriorLibrary?: boolean }>("login", { method: "POST", body: JSON.stringify({ password }) }); setCsrf(response.csrf); setBenefitImages(response.benefitImages === true); setRightsImages(response.ownerRightsImages === true); setPosterLibrary(response.posterLibrary === true);setWarriorLibrary(response.warriorLibrary===true); setPassword(""); await loadContent(); }
     catch (e) { onError(e); } finally { setBusy(false); }
   };
   const save = async (event: FormEvent) => {
@@ -78,8 +80,8 @@ export default function AdminApp() {
   </form></div>;
   return <div className="admin-app">
     <header className="admin-header"><div className="admin-brand"><img src={wordmark} width={432} height={144} alt="雪烬电竞" /><span>内容管理</span></div><div className="admin-header-actions"><a className="button button-secondary" href="/" target="_blank" rel="noopener noreferrer"><ExternalLink size={18} /><span>查看网站</span></a><button type="button" className="button button-secondary" disabled={busy || uploading > 0} onClick={() => void logout()}><LogOut size={18} /><span>退出登录</span></button></div></header>
-    <div className="admin-layout"><nav className="admin-nav" aria-label="内容管理导航">{tabs.map(({ id, title, Icon }) => <button type="button" key={id} disabled={busy || uploading > 0} aria-current={tab === id ? "page" : undefined} aria-description={draft && snapshot && sectionDirty(id, draft, snapshot.catalog) ? "有未发布的修改" : undefined} onClick={() => { if (id !== tab && posterDirty && !confirm("当前海报有未保存的修改，放弃这些修改并切换栏目？已保存的草稿会保留。")) return; if (id !== tab) window.scrollTo(0, 0); setTab(id); setError(""); setNotice(""); }}><Icon size={23} aria-hidden="true" />{title}{draft && snapshot && sectionDirty(id, draft, snapshot.catalog) ? <span className="admin-dirty-dot" aria-hidden="true" /> : null}</button>)}</nav>
-    <main className="admin-main">{draft && snapshot ? tab === "posters" ? posterLibrary ? <PosterLibrary csrf={csrf} domain={snapshot.catalog.cdnDomain} onBusy={onBusy} onUnsaved={setPosterDirty} /> : <div className="admin-error" role="alert">请更新完整 server/、src/ 并重新构建、重启 Node 服务，以启用新版海报库。已有内容会保留。</div> : <form onSubmit={save}><fieldset className="admin-fieldset" disabled={busy || uploading > 0}>
+    <div className="admin-layout"><nav className="admin-nav" aria-label="内容管理导航">{tabs.map(({ id, title, Icon }) => <button type="button" key={id} disabled={busy || uploading > 0} aria-current={tab === id ? "page" : undefined} aria-description={draft && snapshot && sectionDirty(id, draft, snapshot.catalog) ? "有未发布的修改" : undefined} onClick={() => { if (id !== tab && posterDirty && !confirm("当前编辑有未保存的修改，放弃这些修改并切换栏目？已保存的草稿会保留。")) return; if (id !== tab) window.scrollTo(0, 0); setTab(id); setError(""); setNotice(""); }}><Icon size={23} aria-hidden="true" />{title}{draft && snapshot && sectionDirty(id, draft, snapshot.catalog) ? <span className="admin-dirty-dot" aria-hidden="true" /> : null}</button>)}</nav>
+    <main className="admin-main">{draft && snapshot ? tab === "warriors" ? warriorLibrary ? <WarriorManagement csrf={csrf} domain={snapshot.catalog.cdnDomain} onBusy={onBusy} onUnsaved={setPosterDirty}/> : <div className="admin-error" role="alert">请更新完整 server/、src/ 并重新构建、重启 Node 服务，以启用武将管理和自助入口。</div> : tab === "posters" ? posterLibrary ? <PosterLibrary csrf={csrf} domain={snapshot.catalog.cdnDomain} onBusy={onBusy} onUnsaved={setPosterDirty} /> : <div className="admin-error" role="alert">请更新完整 server/、src/ 并重新构建、重启 Node 服务，以启用新版海报库。已有内容会保留。</div> : <form onSubmit={save}><fieldset className="admin-fieldset" disabled={busy || uploading > 0}>
       {tab === "home" ? <HomeEditor catalog={draft} onChange={change} /> : null}
       {tab === "banners" ? <BannersEditor catalog={draft} csrf={csrf} onChange={change} onBusy={onBusy} onError={onError} /> : null}
       {tab === "contact" ? <ContactEditor catalog={draft} csrf={csrf} onChange={change} onBusy={onBusy} onError={onError} /> : null}

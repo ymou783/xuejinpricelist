@@ -7,13 +7,16 @@ import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { createStore, root } from "./store.mjs";
 import { passwordRecord, verifyPassword } from "./auth.mjs";
 import { cdnImageInfo } from "./cdn-info.mjs";
+import { warriorAssets } from "./warrior-assets.mjs";
+import { installWarriorPortal } from "./warrior-portal.mjs";
 const ttl = 8 * 60 * 60 * 1000;
 const cookieName = "xuejin_admin";
 function secureEqual(a, b) { if (typeof a !== "string" || typeof b !== "string") return false; const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); }
-export async function createApp({ directory, trustProxy = false, imageInfo = cdnImageInfo } = {}) {
+export async function createApp({ directory, trustProxy = false, imageInfo = cdnImageInfo, warriorStorage } = {}) {
   if (!directory) throw new Error("Data directory required");
   await mkdir(path.join(directory, "uploads"), { recursive: true });
-  const store = createStore(directory); await store.snapshot();
+  const assets=warriorAssets(directory,warriorStorage);
+  const store = createStore(directory,assets.publish,assets.owned); await store.snapshot();
   const app = express(); app.disable("x-powered-by"); if (trustProxy) app.set("trust proxy", 1);
   const sessions = new Map(); const attempts = new Map();
   const record = await passwordRecord(directory);
@@ -29,7 +32,7 @@ export async function createApp({ directory, trustProxy = false, imageInfo = cdn
     next();
   });
   app.use(express.json({ limit: "1mb" }));
-  app.use((req, res, next) => req.path === "/admin/" ? res.redirect(308, "/admin") : next());
+  app.use((req, res, next) => ["/admin/","/warrior/"].includes(req.path) ? res.redirect(308, req.path.slice(0,-1)) : next());
   const sameOrigin = (req, res, next) => {
     const origin = req.get("origin");
     try { if (origin && new URL(origin).host === req.get("host")) return next(); } catch { /* Reject malformed origins. */ }
@@ -44,9 +47,10 @@ export async function createApp({ directory, trustProxy = false, imageInfo = cdn
   const authenticate = (req, res, next) => { const s = session(req); if (!s) return res.status(401).json({ error: "登录已失效，请重新登录。" }); req.adminSession = s; next(); };
   const csrf = (req, res, next) => { if (!secureEqual(req.get("x-csrf-token"), req.adminSession.csrf)) return res.status(403).json({ error: "请重新加载后台后重试。" }); next(); };
   const cookieOptions = req => ({ httpOnly: true, secure: req.secure, sameSite: "strict", path: "/", maxAge: ttl });
+  const disposePortal=installWarriorPortal({app,store,assets,sameOrigin,adminAuthenticate:authenticate,adminCsrf:csrf,adminSession:session,cookieOptions,secureEqual});
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
   app.get("/catalog.json", async (_req, res) => res.json((await store.snapshot()).catalog));
-  app.get("/api/admin/session", (req, res) => { const s = session(req); res.json({ configured: !!record, authenticated: !!s, posterLibrary: true, benefitImages: true, ownerRightsImages: true, ...(s ? { csrf: s.csrf } : {}) }); });
+  app.get("/api/admin/session", (req, res) => { const s = session(req); res.json({ configured: !!record, authenticated: !!s, warriorLibrary: true, posterLibrary: true, benefitImages: true, ownerRightsImages: true, ...(s ? { csrf: s.csrf } : {}) }); });
   app.post("/api/admin/login", sameOrigin, async (req, res) => {
     if (!record) return res.status(503).json({ error: "尚未设置管理密码，请先在服务器运行 npm run admin:password，再重启服务。" });
     const key = req.ip; const now = Date.now(); const previous = attempts.get(key);
@@ -58,13 +62,18 @@ export async function createApp({ directory, trustProxy = false, imageInfo = cdn
     }
     attempts.delete(key); const old = session(req); if (old) sessions.delete(old.token);
     const token = randomBytes(32).toString("hex"); const entry = { csrf: randomBytes(32).toString("hex"), expires: now + ttl };
-    sessions.set(token, entry); res.cookie(cookieName, token, cookieOptions(req)); res.json({ csrf: entry.csrf, posterLibrary: true, benefitImages: true, ownerRightsImages: true });
+    sessions.set(token, entry); res.cookie(cookieName, token, cookieOptions(req)); res.json({ csrf: entry.csrf, warriorLibrary: true, posterLibrary: true, benefitImages: true, ownerRightsImages: true });
   });
   app.use("/api/admin", authenticate);
   app.get("/api/admin/content", async (req, res) => res.json(await store.snapshot(req.query.excludePosters === "1")));
   app.post("/api/admin/logout", sameOrigin, csrf, (req, res) => { sessions.delete(req.adminSession.token); res.clearCookie(cookieName, { ...cookieOptions(req), maxAge: undefined }); res.json({ ok: true }); });
   app.put("/api/admin/content", sameOrigin, csrf, async (req, res) => res.json(await store.save(req.body?.catalog, req.body?.revision)));
   app.put("/api/admin/content/sections/:section", sameOrigin, csrf, async (req, res) => res.json(await store.saveSection(req.params.section, req.body?.value, req.body?.revision)));
+  app.get("/api/admin/warriors", async (req, res) => res.json(await store.listWarriors(req.query)));
+  app.post("/api/admin/warriors", sameOrigin, csrf, async (req, res) => res.status(201).json(await store.createWarrior(req.body?.draft)));
+  app.get("/api/admin/warriors/:id", async (req, res) => res.json(await store.getWarrior(req.params.id)));
+  app.put("/api/admin/warriors/:id", sameOrigin, csrf, async (req, res) => res.json(await store.updateWarrior(req.params.id, req.body?.draft, req.body?.version, req.body?.action)));
+  app.post("/api/admin/warriors/:id/move", sameOrigin, csrf, async (req, res) => res.json(await store.moveWarrior(req.params.id, req.body?.position, req.body?.revision)));
   app.get("/api/admin/posters", async (req, res) => res.json(await store.listPosters(req.query)));
   app.post("/api/admin/posters", sameOrigin, csrf, async (req, res) => res.status(201).json(await store.createPoster(req.body?.draft, req.body?.id)));
   app.post("/api/admin/posters/import", sameOrigin, csrf, async (req, res) => res.json(await store.importPosters(req.body?.items)));
@@ -106,7 +115,7 @@ export async function createApp({ directory, trustProxy = false, imageInfo = cdn
   app.use("/api", (_req, res) => res.status(404).json({ error: "接口不存在。" }));
   app.use("/uploads", express.static(path.join(directory, "uploads"), { dotfiles: "deny", index: false, fallthrough: false, immutable: true, maxAge: "1y" }));
   app.use("/assets", express.static(path.join(root, "dist/assets"), { immutable: true, maxAge: "1y", fallthrough: false }));
-  app.get(["/", "/admin", "/admin/"], (_req, res) => { res.set("Cache-Control", "no-cache"); res.sendFile(path.join(root, "dist/index.html")); });
+  app.get(["/", "/admin", "/admin/", "/warrior", "/warrior/"], (_req, res) => { res.set("Cache-Control", "no-cache"); res.sendFile(path.join(root, "dist/index.html")); });
   app.use("/licenses", express.static(path.join(root, "dist/licenses")));
   app.use((_req, res) => res.status(404).type("text/plain").send("页面不存在"));
   app.use((error, _req, res, _next) => {
@@ -114,5 +123,5 @@ export async function createApp({ directory, trustProxy = false, imageInfo = cdn
     const status = error instanceof multer.MulterError ? 400 : error.status || 500;
     res.status(status).json({ error: error instanceof multer.MulterError ? "上传失败：每次请选择一张 15MB 以内的图片。" : status < 500 ? error.message : "服务器暂时无法处理请求，请稍后重试。" });
   });
-  return { app, store, dispose: () => clearInterval(purge) };
+  return { app, store, dispose: () => { clearInterval(purge);disposePortal(); } };
 }
